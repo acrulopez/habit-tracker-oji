@@ -4,8 +4,21 @@ import { ExpoConfig, ConfigContext } from "expo/config";
 const BUNDLE_ID = "dev.alejandrodelacruz.habittracker";
 const APP_GROUP = `group.${BUNDLE_ID}`;
 // Apple Developer Team ID — required for iOS widget (App Group) builds.
-// Set via env so it isn't hardcoded; fill in before building for a device.
-const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID ?? undefined;
+// Single source of truth is eas.json (build.production.env.APPLE_TEAM_ID), so
+// EAS cloud builds and local `expo run:ios` agree. An APPLE_TEAM_ID env var
+// still wins if set, letting you override per-build without editing files.
+const easTeamId = (() => {
+  try {
+    // Read directly so a broken/absent eas.json degrades to undefined instead
+    // of failing config evaluation.
+    return require("./eas.json")?.build?.production?.env?.APPLE_TEAM_ID as
+      | string
+      | undefined;
+  } catch {
+    return undefined;
+  }
+})();
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID ?? easTeamId ?? undefined;
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,

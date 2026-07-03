@@ -6,16 +6,31 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APPLE_TEAM_ID": "CC7X6K85NP"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APPLE_TEAM_ID": "CC7X6K85NP"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "APPLE_TEAM_ID": "CC7X6K85NP"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "acrulopez@gmail.com",
+        "ascAppId": "6787017539",
+        "appleTeamId": "CC7X6K85NP"
+      }
+    }
   }
 }

@@ -17,31 +17,67 @@ A minimal habit tracker for iOS and Android, built with **Expo (SDK 56) + React 
 ## Requirements
 
 - Node + npm
-- Xcode (iOS) / Android SDK (Android) for native builds
+- Xcode (iOS) / Android SDK (Android) for **local** native builds (not needed for EAS cloud builds)
 - Widgets require a **custom dev/EAS build — they do not run in Expo Go.**
 - iOS widget interactivity requires **iOS 17+**.
 
-## Getting started
+## Getting started (development)
 
 ```bash
 make install        # npm install
-make ios            # build + run the iOS dev client (prebuilds native code)
-make android        # build + run the Android dev client
+make ios            # build + run the iOS dev client (prebuilds native code), starts Metro
+make android        # build + run the Android dev client, starts Metro
+make ios-start      # reattach Metro to an already-installed iOS dev build
 make typecheck      # tsc --noEmit
 make test           # jest unit tests
 ```
 
-Run `make help` for all targets.
+Run `make help` for the full list of targets.
 
-### Before building for iOS
+The dev client loads its JavaScript from the Metro dev server — **close the server
+and the app stops working.** For an install that runs on its own, see below.
 
-Set your Apple Developer Team ID (needed for the App Group used by the widget):
+### Configuration
+
+The Apple Developer Team ID (required for the App Group the widget uses) lives in
+`eas.json` under `build.*.env.APPLE_TEAM_ID`. `app.config.ts` reads it from there
+and applies it to the app + widget targets — no `export` needed. To override for a
+single build, prefix the command: `APPLE_TEAM_ID=XXXXXXXXXX make ios-release`.
+
+## Install a standalone build on your device
+
+Builds a **Release** binary over USB with the JS bundled in, so it runs with **no
+dev server**:
 
 ```bash
-export APPLE_TEAM_ID=XXXXXXXXXX
+make ios-release    # expo run:ios --device --configuration Release
 ```
 
-It is read by `app.config.ts` and applied to the app + widget targets.
+Requires the iPhone connected via USB and unlocked, and Xcode signed into your
+Apple account (Xcode → Settings → Accounts). On first launch you may need to trust
+the developer profile under Settings → General → VPN & Device Management.
+
+How long the install lasts depends on the signing account: **~1 year** on a paid
+Apple Developer account, **7 days** on a free Apple ID (after which re-run the
+command).
+
+## Build & publish (TestFlight / stores)
+
+Cloud builds via EAS — no local Xcode required:
+
+```bash
+make build-dev      # development build (dev client, internal distribution)
+make build-preview  # preview build (internal distribution)
+make build-prod     # production build
+make submit         # upload the latest production build to App Store Connect / TestFlight
+```
+
+The first `make build-*` run links/creates the EAS project and generates signing
+credentials interactively — answer the prompts. `make submit` uses the Apple ID and
+App Store Connect app id configured in `eas.json` (`submit.production.ios`).
+
+`make release VERSION=x.y.z` tags the version and pushes it to trigger the CI
+release pipeline.
 
 ## Architecture
 

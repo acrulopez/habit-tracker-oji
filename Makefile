@@ -2,19 +2,22 @@
 
 .DEFAULT_GOAL := help
 
+# App name is derived from the directory, so this file is identical across repos.
+APP_NAME := $(notdir $(CURDIR))
+
 # Use npx so the locally pinned Expo/EAS CLIs are used.
 EXPO ?= npx expo
 EAS  ?= npx eas-cli
 
-.PHONY: help install start web ios ios-device ios-start android android-start \
+.PHONY: help install start web ios ios-device ios-release ios-start android android-start \
         prebuild prebuild-clean \
-        test test-watch typecheck \
-        build-dev build-preview build-prod submit \
+        test test-watch typecheck lint check \
+        build-dev build-preview build-prod submit release \
         clean
 
 ## help: Show this help.
 help:
-	@echo "habit-tracker-oji — common commands"
+	@echo "$(APP_NAME) — common commands"
 	@echo ""
 	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  make /'
 
@@ -39,6 +42,10 @@ ios:
 ## ios-device: Build & install the dev client on a USB-connected iPhone.
 ios-device:
 	$(EXPO) run:ios --device
+
+## ios-release: Build & install a standalone Release app (JS bundled in, no Metro needed).
+ios-release:
+	$(EXPO) run:ios --device --configuration Release
 
 ## ios-start: Reattach Metro to an already-installed iOS dev build.
 ios-start:
@@ -76,6 +83,13 @@ test-watch:
 typecheck:
 	npx tsc --noEmit
 
+## lint: Lint the project with Expo's ESLint config.
+lint:
+	$(EXPO) lint
+
+## check: Run typecheck, lint, and tests (full quality gate).
+check: typecheck lint test
+
 # --- EAS cloud builds & submission ------------------------------------------
 
 ## build-dev: EAS development build (dev client, internal distribution).
@@ -93,6 +107,12 @@ build-prod:
 ## submit: Submit the latest production build to the app stores.
 submit:
 	$(EAS) submit --profile production
+
+## release: Tag VERSION and push it to trigger the CI release pipeline. Usage: make release VERSION=1.2.0
+release:
+	@test -n "$(VERSION)" || { echo "Usage: make release VERSION=1.2.0"; exit 1; }
+	git tag v$(VERSION)
+	git push origin v$(VERSION)
 
 # --- Housekeeping -----------------------------------------------------------
 
