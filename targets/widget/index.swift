@@ -308,7 +308,34 @@ struct HabitsWidgetEntryView: View {
     }
 }
 
-// MARK: - Widget
+// A small (2×2) variant showing 4 habits in a single column, each with the full
+// 3-day strip (the original "Looped" reference look).
+struct HabitsHistoryEntryView: View {
+    var entry: HabitsProvider.Entry
+    private let maxRows = 4 // single column
+
+    var body: some View {
+        Group {
+            if entry.habits.isEmpty {
+                Text("No habits yet")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                VStack(spacing: 14) {
+                    ForEach(entry.habits.prefix(maxRows)) { habit in
+                        HabitCellView(habit: habit, today: entry.today, todayOnly: false)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .containerBackground(CARD_BG, for: .widget)
+    }
+}
+
+// MARK: - Widgets
 
 struct HabitsWidget: Widget {
     let kind: String = "HabitsWidget"
@@ -325,9 +352,25 @@ struct HabitsWidget: Widget {
     }
 }
 
+struct HabitsHistoryWidget: Widget {
+    let kind: String = "HabitsHistory"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: HabitsProvider()) { entry in
+            HabitsHistoryEntryView(entry: entry)
+        }
+        .configurationDisplayName("Habits · 3-Day")
+        .description("Four habits with the last 3 days.")
+        // 2×2 only: four habits in a single column, each with the 3-day strip.
+        .supportedFamilies([.systemSmall])
+    }
+}
+
 @main
 struct HabitsWidgetBundle: WidgetBundle {
     var body: some Widget {
+        // Listed first so it appears first in the widget gallery.
+        HabitsHistoryWidget()
         HabitsWidget()
     }
 }

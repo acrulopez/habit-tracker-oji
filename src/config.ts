@@ -16,6 +16,9 @@ export const APP_GROUP: string =
 // Must match the iOS widget `kind` (targets/widget/index.swift) and the Android
 // widget `name` (app.config.ts react-native-android-widget plugin config).
 export const IOS_WIDGET_KIND = "HabitsWidget";
+// Second iOS-only widget: a small (2×2) "3-day strip" variant. Matches the Swift
+// `kind` in targets/widget/index.swift.
+export const IOS_WIDGET_KIND_HISTORY = "HabitsHistory";
 export const ANDROID_WIDGET_NAME = "Habits";
 
 // Keys shared with the native iOS widget through the App Group UserDefaults.

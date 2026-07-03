@@ -5,6 +5,7 @@ import {
   ANDROID_WIDGET_NAME,
   APP_GROUP,
   IOS_WIDGET_KIND,
+  IOS_WIDGET_KIND_HISTORY,
   SNAPSHOT_KEY,
 } from "../config";
 import { buildTodaySnapshot } from "./snapshot";
@@ -26,6 +27,7 @@ export function syncWidget(): void {
     const storage = new ExtensionStorage(APP_GROUP);
     storage.set(SNAPSHOT_KEY, JSON.stringify(snapshot));
     ExtensionStorage.reloadWidget(IOS_WIDGET_KIND);
+    ExtensionStorage.reloadWidget(IOS_WIDGET_KIND_HISTORY);
     return;
   }
 
