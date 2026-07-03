@@ -9,6 +9,7 @@ import {
 } from "../config";
 import { buildTodaySnapshot } from "./snapshot";
 import { HabitsWidget } from "./HabitsWidget";
+import { deriveLayout, getWidgetSize } from "./widgetLayout";
 
 /**
  * Push the current "today" state to the home-screen widget(s).
@@ -31,9 +32,16 @@ export function syncWidget(): void {
   if (Platform.OS === "android") {
     // Lazy require keeps this Android-only call out of the iOS evaluation path.
     const { requestWidgetUpdate } = require("react-native-android-widget");
+    const layout = deriveLayout(getWidgetSize());
     requestWidgetUpdate({
       widgetName: ANDROID_WIDGET_NAME,
-      renderWidget: () => <HabitsWidget snapshot={snapshot} />,
+      renderWidget: () => (
+        <HabitsWidget
+          snapshot={snapshot}
+          todayOnly={layout.todayOnly}
+          maxRows={layout.maxRows}
+        />
+      ),
       widgetNotFound: () => {},
     });
   }

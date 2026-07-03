@@ -4,7 +4,15 @@ module.exports = (config) => ({
   // Must match IOS_WIDGET_KIND in src/config.ts and the Swift `kind`.
   name: "HabitsWidget",
   deploymentTarget: "17.0",
-  // App Groups are synced from the main app target automatically (the "widget"
-  // target type sets appGroupsByDefault), giving the widget access to the same
-  // UserDefaults suite the app writes the snapshot into.
+  // The widget must join the same App Group as the app so it can read the
+  // snapshot the app writes into the shared UserDefaults suite. The plugin only
+  // emits a widget entitlements file when `entitlements` is defined here (its
+  // auto-sync path is skipped when this key is absent), so mirror the main app's
+  // App Group explicitly. Single source of truth is app.config.ts.
+  entitlements: {
+    "com.apple.security.application-groups":
+      config.ios?.entitlements?.["com.apple.security.application-groups"] ?? [
+        `group.${config.ios?.bundleIdentifier}`,
+      ],
+  },
 });

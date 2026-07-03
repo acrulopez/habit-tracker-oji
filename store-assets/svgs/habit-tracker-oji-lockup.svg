@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="450" height="140" viewBox="0 0 450 140" role="img" aria-label="Habit Tracker Oji logo">
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500&amp;display=swap");
+    .wm{font-family:'Inter Tight',sans-serif;font-weight:500;font-size:30px}
+  </style>
+  <rect x="20" y="22" width="96" height="96" rx="22" fill="#ECF7FF"/>
+  <g fill="none" stroke="#0A80F6">
+    <polyline points="46,92 68,92 68,70 90,70 90,48" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="46" cy="92" r="6.6" fill="#0A80F6" stroke="none"/>
+    <circle cx="68" cy="92" r="6.6" fill="#0A80F6" stroke="none"/>
+    <circle cx="68" cy="70" r="6.6" fill="#0A80F6" stroke="none"/>
+    <circle cx="90" cy="70" r="6.6" fill="#0A80F6" stroke="none"/>
+    <circle cx="90" cy="48" r="6.6" fill="#0A80F6" stroke="none"/>
+    <circle cx="46" cy="48" r="6.6" stroke-width="1.8"/>
+    <circle cx="68" cy="48" r="6.6" stroke-width="1.8"/>
+    <circle cx="46" cy="70" r="6.6" stroke-width="1.8"/>
+    <circle cx="90" cy="92" r="6.6" stroke-width="1.8"/>
+  </g>
+  <text x="136" y="80" class="wm"><tspan fill="#021A31">Habit Tracker </tspan><tspan fill="#0A80F6">Oji</tspan></text>
+</svg>

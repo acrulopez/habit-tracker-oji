@@ -4,6 +4,7 @@ import { HabitsWidget } from "./HabitsWidget";
 import { habitRepository } from "../data/habitRepository";
 import { buildTodaySnapshot, WIDGET_DAYS } from "./snapshot";
 import { lastNDays, todayKey } from "../lib/dates";
+import { deriveLayout, setWidgetSize } from "./widgetLayout";
 
 /**
  * Headless JS task that handles Android widget lifecycle + click events.
@@ -11,7 +12,13 @@ import { lastNDays, todayKey } from "../lib/dates";
  * completion directly in MMKV and re-renders the widget.
  */
 export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
-  const { widgetAction, clickAction, clickActionData, renderWidget } = props;
+  const { widgetAction, clickAction, clickActionData, renderWidget, widgetInfo } = props;
+
+  // Remember the widget's size so app-driven updates (which get no widgetInfo)
+  // can still pick the right layout.
+  if (widgetInfo?.width && widgetInfo?.height) {
+    setWidgetSize({ width: widgetInfo.width, height: widgetInfo.height });
+  }
 
   if (widgetAction === "WIDGET_CLICK" && clickAction === "TOGGLE_HABIT") {
     const habitId = clickActionData?.habitId as string | undefined;
@@ -26,5 +33,16 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
     }
   }
 
-  renderWidget(<HabitsWidget snapshot={buildTodaySnapshot()} />);
+  const layout = deriveLayout(
+    widgetInfo?.width && widgetInfo?.height
+      ? { width: widgetInfo.width, height: widgetInfo.height }
+      : null,
+  );
+  renderWidget(
+    <HabitsWidget
+      snapshot={buildTodaySnapshot()}
+      todayOnly={layout.todayOnly}
+      maxRows={layout.maxRows}
+    />,
+  );
 }

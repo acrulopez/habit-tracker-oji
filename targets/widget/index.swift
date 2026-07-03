@@ -46,10 +46,6 @@ private func localTodayKey() -> String {
     dateKeyFormatter().string(from: Date())
 }
 
-private func keyToDate(_ key: String) -> Date? {
-    dateKeyFormatter().date(from: key)
-}
-
 // Recent day keys, oldest first (e.g. [-2, -1, today]).
 private func recentDateKeys() -> [String] {
     let calendar = Calendar.current
@@ -62,19 +58,6 @@ private func recentDateKeys() -> [String] {
         }
     }
     return keys
-}
-
-private func recentDayLabel(_ key: String, today: String) -> String {
-    if key == today { return "Today" }
-    if let kd = keyToDate(key), let td = keyToDate(today) {
-        let days = Calendar.current.dateComponents([.day], from: kd, to: td).day ?? 0
-        if days == 1 { return "Yest." }
-        let weekday = DateFormatter()
-        weekday.locale = Locale(identifier: "en_US_POSIX")
-        weekday.dateFormat = "EEEEE" // narrow single-letter weekday
-        return weekday.string(from: kd)
-    }
-    return key
 }
 
 // MARK: - Snapshot read/write
@@ -211,44 +194,49 @@ struct HabitsProvider: TimelineProvider {
 
 // MARK: - Views
 
+// Card + cell colors (kept in sync with src/widget/HabitsWidget.tsx).
+private let CARD_BG = Color(red: 0.09, green: 0.09, blue: 0.10)   // #17171A
+private let CELL_DONE = Color(red: 0.976, green: 0.451, blue: 0.086) // #F97316
+private let CELL_MUTED = Color(red: 0.227, green: 0.227, blue: 0.235) // #3A3A3C
+
+// A single tappable day cell — a bare rounded square, filled when done.
 struct DayCell: View {
     let day: WidgetDay
-    let label: String
 
     var body: some View {
-        VStack(spacing: 3) {
-            Text(label)
-                .font(.system(size: 9, weight: .semibold))
-                .foregroundStyle(.secondary)
-            ZStack {
-                Circle()
-                    .fill(day.done ? Color.green : Color.secondary.opacity(0.2))
-                    .frame(width: 24, height: 24)
-                if day.done {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-            }
-        }
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(day.done ? CELL_DONE : CELL_MUTED)
+            .frame(width: 22, height: 22)
     }
 }
 
-struct HabitRowView: View {
+// One habit as a grid cell: emoji on the left, then either the full 3-day strip
+// or just today's square (small widget). Icon only — no habit name, no labels.
+struct HabitCellView: View {
     let habit: WidgetHabit
     let today: String
+    let todayOnly: Bool
 
+    // Narrow (small) widget shows only today so two columns of habits fit.
+    private var displayDays: [WidgetDay] {
+        todayOnly ? Array(habit.days.suffix(1)) : habit.days
+    }
+    // The small widget's 2-column cells are narrow, so use a smaller emoji and
+    // tighter gap there to keep wide emojis (💦, 🍉) from clipping at the edge.
+    private var emojiSize: CGFloat { todayOnly ? 17 : 20 }
+    private var emojiSpacing: CGFloat { todayOnly ? 6 : 10 }
+
+    // Natural-sized group (emoji + squares); the parent row positions it within
+    // its column.
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: emojiSpacing) {
             Text(habit.emoji)
-            Text(habit.name)
-                .font(.subheadline)
-                .lineLimit(1)
-            Spacer(minLength: 4)
+                .font(.system(size: emojiSize))
+                .fixedSize() // never compress/clip the emoji
             HStack(spacing: 6) {
-                ForEach(habit.days, id: \.date) { day in
+                ForEach(displayDays, id: \.date) { day in
                     Button(intent: ToggleHabitIntent(habitId: habit.id, date: day.date)) {
-                        DayCell(day: day, label: recentDayLabel(day.date, today: today))
+                        DayCell(day: day)
                     }
                     .buttonStyle(.plain)
                 }
@@ -258,22 +246,65 @@ struct HabitRowView: View {
 }
 
 struct HabitsWidgetEntryView: View {
+    @Environment(\.widgetFamily) private var family
     var entry: HabitsProvider.Entry
 
+    // Always two columns. Small shows only today's square per habit (so ~8 fit);
+    // medium/large show the full 3-day strip. Widgets can't scroll, so cap rows
+    // to what fits each family's height.
+    private let columns = 2
+    private var todayOnly: Bool { family == .systemSmall }
+    private var maxRows: Int {
+        switch family {
+        case .systemLarge: return 8
+        default: return 4 // small + medium are the same height
+        }
+    }
+    // Habits chunked into rows of `columns`, capped to what fits the family.
+    private var rows: [[WidgetHabit]] {
+        let shown = Array(entry.habits.prefix(columns * maxRows))
+        return stride(from: 0, to: shown.count, by: columns).map { start in
+            Array(shown[start..<min(start + columns, shown.count)])
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        Group {
             if entry.habits.isEmpty {
                 Text("No habits yet")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ForEach(entry.habits.prefix(5)) { habit in
-                    HabitRowView(habit: habit, today: entry.today)
+                // Top-aligned rows.
+                VStack(spacing: 14) {
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                        HStack(spacing: 0) {
+                            if todayOnly {
+                                // Small: left column hugs the leading edge, right
+                                // column centered in its half.
+                                ForEach(Array(row.enumerated()), id: \.offset) { i, habit in
+                                    HabitCellView(habit: habit, today: entry.today, todayOnly: true)
+                                        .frame(maxWidth: .infinity, alignment: i == 0 ? .leading : .center)
+                                }
+                                ForEach(0..<(columns - row.count), id: \.self) { _ in
+                                    Color.clear.frame(maxWidth: .infinity)
+                                }
+                            } else {
+                                // Medium/large: equal space left / middle / right.
+                                Spacer(minLength: 0)
+                                ForEach(Array(row.enumerated()), id: \.offset) { _, habit in
+                                    HabitCellView(habit: habit, today: entry.today, todayOnly: false)
+                                    Spacer(minLength: 0)
+                                }
+                            }
+                        }
+                    }
                 }
+                .frame(maxHeight: .infinity, alignment: .top)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .containerBackground(.fill.tertiary, for: .widget)
+        .containerBackground(CARD_BG, for: .widget)
     }
 }
 
@@ -288,7 +319,9 @@ struct HabitsWidget: Widget {
         }
         .configurationDisplayName("Habits")
         .description("Tap a day to complete your habits.")
-        .supportedFamilies([.systemMedium, .systemLarge])
+        // Small (2 home-columns wide) shows a single habit column like the
+        // reference; medium/large (4 wide) show two columns.
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 

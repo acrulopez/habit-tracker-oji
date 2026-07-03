@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Habit Tracker Oji app icon">
+  <rect width="512" height="512" rx="112" fill="#ECF7FF"/>
+  <g fill="none" stroke="#0A80F6">
+    <polyline points="156,356 256,356 256,256 356,256 356,156" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="156" cy="356" r="30" fill="#0A80F6" stroke="none"/>
+    <circle cx="256" cy="356" r="30" fill="#0A80F6" stroke="none"/>
+    <circle cx="256" cy="256" r="30" fill="#0A80F6" stroke="none"/>
+    <circle cx="356" cy="256" r="30" fill="#0A80F6" stroke="none"/>
+    <circle cx="356" cy="156" r="30" fill="#0A80F6" stroke="none"/>
+    <circle cx="156" cy="156" r="30" stroke-width="8"/>
+    <circle cx="256" cy="156" r="30" stroke-width="8"/>
+    <circle cx="156" cy="256" r="30" stroke-width="8"/>
+    <circle cx="356" cy="356" r="30" stroke-width="8"/>
+  </g>
+</svg>

@@ -24,6 +24,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "Habit Tracker Oji",
   slug: "habit-tracker-oji",
+  owner: "acrulopez",
   version: "1.0.0",
   orientation: "portrait",
   icon: "./assets/icon.png",
@@ -44,7 +45,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: BUNDLE_ID,
     adaptiveIcon: {
-      backgroundColor: "#0E0E10",
+      backgroundColor: "#0A80F6",
       foregroundImage: "./assets/android-icon-foreground.png",
       backgroundImage: "./assets/android-icon-background.png",
       monochromeImage: "./assets/android-icon-monochrome.png",
@@ -56,6 +57,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     "expo-router",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/splash-icon.png",
+        imageWidth: 200,
+        resizeMode: "contain",
+        backgroundColor: "#0A80F6",
+        dark: { backgroundColor: "#0A80F6", image: "./assets/splash-icon.png" },
+      },
+    ],
     [
       "expo-build-properties",
       {
@@ -88,9 +99,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ],
       },
     ],
+    // Normalize the generated iOS project's objectVersion (70 -> 77) so CocoaPods'
+    // xcodeproj gem can parse it. Must run last, after @bacons/apple-targets. See
+    // plugins/withIosObjectVersion.js.
+    "./plugins/withIosObjectVersion",
   ],
   extra: {
     appGroup: APP_GROUP,
     bundleId: BUNDLE_ID,
+    eas: {
+      projectId: "23ca80e3-b3cd-4c7f-bf66-d6285950a512",
+    },
   },
 });
