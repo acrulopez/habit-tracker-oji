@@ -99,6 +99,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         ],
       },
     ],
+    // iCloud Key-Value Store backup. Adds the ubiquity-kvstore entitlement +
+    // iCloud capability so EAS can provision it. Uses the free per-app 1 MB KVS
+    // bucket — no CloudKit container / iCloud storage quota is consumed.
+    // Strip the CloudKit entitlements @nauverse/expo-cloud-settings adds — the KVS backup
+    // feature only uses NSUbiquitousKeyValueStore, so CloudKit/container entitlements are
+    // unused and only complicate provisioning. Listed BEFORE @nauverse on purpose: in Expo's
+    // entitlements mod chain the last-registered plugin's action runs first, so registering
+    // this earlier makes its delete run AFTER @nauverse adds the keys. See
+    // plugins/withIcloudKvsOnly.js.
+    "./plugins/withIcloudKvsOnly",
+    "@nauverse/expo-cloud-settings",
     // Normalize the generated iOS project's objectVersion (70 -> 77) so CocoaPods'
     // xcodeproj gem can parse it. Must run last, after @bacons/apple-targets. See
     // plugins/withIosObjectVersion.js.

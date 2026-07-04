@@ -5,11 +5,11 @@ import DraggableFlatList, {
   type RenderItemParams,
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useHabitStore } from "../src/store/useHabitStore";
 import { HabitCard } from "../src/components/HabitCard";
 import { HabitMenu } from "../src/components/HabitMenu";
+import { Icon } from "../src/components/Icon";
 import { useTheme } from "../src/theme/theme";
 import type { Habit } from "../src/data/types";
 
@@ -77,7 +77,7 @@ export default function HomeScreen() {
               { backgroundColor: theme.card, opacity: pressed ? 0.7 : 1 },
             ]}
           >
-            <Ionicons name="settings-outline" size={22} color={theme.text} />
+            <Icon name="settings" size={22} color={theme.text} />
           </Pressable>
           <Pressable
             accessibilityLabel="Add habit"
@@ -87,7 +87,7 @@ export default function HomeScreen() {
               { backgroundColor: theme.accent, opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <Ionicons name="add" size={28} color="#FFFFFF" />
+            <Icon name="add" size={28} color="#FFFFFF" />
           </Pressable>
         </View>
       </View>

@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { habitRepository } from "../../../src/data/habitRepository";
 import { MonthCalendar } from "../../../src/components/MonthCalendar";
@@ -13,6 +12,7 @@ import {
 import { todayKey } from "../../../src/lib/dates";
 import { useTheme } from "../../../src/theme/theme";
 import { useHabitStore } from "../../../src/store/useHabitStore";
+import { Icon } from "../../../src/components/Icon";
 
 export default function HistoryScreen() {
   const theme = useTheme();
@@ -42,7 +42,7 @@ export default function HistoryScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color={theme.text} />
+          <Icon name="chevronLeft" size={28} color={theme.text} />
         </Pressable>
         <View style={styles.headerTitle}>
           <Text style={styles.headerEmoji}>{habit?.emoji ?? "📊"}</Text>

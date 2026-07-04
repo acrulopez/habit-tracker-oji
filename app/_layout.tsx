@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useHabitStore } from "../src/store/useHabitStore";
+import * as cloudBackup from "../src/data/cloudBackup";
 import { useTheme } from "../src/theme/theme";
 
 export default function RootLayout() {
@@ -13,11 +14,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     refresh();
+    // Restore from iCloud only after the first refresh() has drained pending
+    // widget toggles, so local taps are never clobbered. Runs once per launch.
+    if (cloudBackup.restoreOnLaunch()) refresh();
+    // Pull newer data pushed from another device (iPhone/iPad on one account).
+    const unsubscribe = cloudBackup.registerCloudListener(() => refresh());
     const sub = AppState.addEventListener("change", (state) => {
       // On returning to the app, drain any widget toggles and reload state.
       if (state === "active") refresh();
+      // Flush any pending backup before we lose foreground time.
+      else if (state === "background") cloudBackup.flushPendingUpload();
     });
-    return () => sub.remove();
+    return () => {
+      sub.remove();
+      unsubscribe();
+    };
   }, [refresh]);
 
   return (

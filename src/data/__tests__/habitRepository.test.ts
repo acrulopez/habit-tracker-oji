@@ -94,4 +94,39 @@ describe("habitRepository", () => {
     // C should land last, not collide with an existing order.
     expect(repo.listHabits().map((h) => h.name)).toEqual(["B", "A", "C"]);
   });
+
+  test("exportAll includes archived habits and their completions", () => {
+    const repo = makeRepo();
+    const a = repo.createHabit({ name: "A", emoji: "🅰️" });
+    const b = repo.createHabit({ name: "B", emoji: "🅱️" });
+    repo.setCompletion(a.id, "2026-06-01", true);
+    // Archive b directly (updateHabit can't set archived).
+    repo.importAll(
+      [{ ...b, archived: true }, a],
+      { [a.id]: ["2026-06-01"] },
+    );
+    const dump = repo.exportAll();
+    expect(dump.habits.map((h) => h.id).sort()).toEqual([a.id, b.id].sort());
+    expect(dump.completions[a.id]).toEqual(["2026-06-01"]);
+  });
+
+  test("importAll replaces all data and drops orphan completions", () => {
+    const repo = makeRepo();
+    const a = repo.createHabit({ name: "A", emoji: "🅰️" });
+    repo.setCompletion(a.id, "2026-06-01", true);
+
+    // Restore a completely different snapshot; a's completions must be gone.
+    const restored = {
+      id: "restored-1",
+      name: "Restored",
+      emoji: "✨",
+      order: 0,
+      createdAt: "2026-01-01T00:00:00.000Z",
+    };
+    repo.importAll([restored], { [restored.id]: ["2026-07-04"] });
+
+    expect(repo.listHabits().map((h) => h.name)).toEqual(["Restored"]);
+    expect(repo.getCompletions(a.id)).toEqual([]);
+    expect(repo.getCompletions(restored.id)).toEqual(["2026-07-04"]);
+  });
 });

@@ -1,8 +1,8 @@
 import React from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { Habit } from "../data/types";
 import { useTheme } from "../theme/theme";
+import { Icon, type IconName } from "./Icon";
 
 type Props = {
   habit: Habit | null;
@@ -47,19 +47,19 @@ export function HabitMenu({
               </View>
 
               <MenuItem
-                icon="calendar-outline"
+                icon="calendar"
                 label="View history"
                 color={theme.text}
                 onPress={() => onHistory(habit)}
               />
               <MenuItem
-                icon="create-outline"
+                icon="edit"
                 label="Edit"
                 color={theme.text}
                 onPress={() => onEdit(habit)}
               />
               <MenuItem
-                icon="trash-outline"
+                icon="trash"
                 label="Delete"
                 color={theme.danger}
                 onPress={() => onDelete(habit)}
@@ -78,7 +78,7 @@ function MenuItem({
   color,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   label: string;
   color: string;
   onPress: () => void;
@@ -88,7 +88,7 @@ function MenuItem({
       onPress={onPress}
       style={({ pressed }) => [styles.item, { opacity: pressed ? 0.6 : 1 }]}
     >
-      <Ionicons name={icon} size={22} color={color} />
+      <Icon name={icon} size={22} color={color} />
       <Text style={[styles.itemLabel, { color }]}>{label}</Text>
     </Pressable>
   );

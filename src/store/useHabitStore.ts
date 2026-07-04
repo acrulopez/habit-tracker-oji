@@ -5,6 +5,7 @@ import { lastNDays, todayKey } from "../lib/dates";
 import { WIDGET_DAYS } from "../widget/snapshot";
 import { syncWidget } from "../widget/syncWidget";
 import { reconcileWidgetToggles } from "../widget/reconcile";
+import * as cloudBackup from "../data/cloudBackup";
 
 /** done state for a habit across the recent days: dateKey -> done. */
 type DoneByDate = Record<string, boolean>;
@@ -50,7 +51,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
 
   refresh: () => {
     // Pull in any completions toggled from the iOS widget while we were away.
-    reconcileWidgetToggles();
+    const drained = reconcileWidgetToggles();
     const today = todayKey();
     const recentDays = lastNDays(WIDGET_DAYS, today);
     const habits = habitRepository.listHabits();
@@ -62,21 +63,26 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       hydrated: true,
     });
     syncWidget();
+    // Widget taps are real local changes — back them up too.
+    if (drained) cloudBackup.scheduleUpload();
   },
 
   addHabit: (input) => {
     habitRepository.createHabit(input);
     get().refresh();
+    cloudBackup.scheduleUpload();
   },
 
   editHabit: (id, input) => {
     habitRepository.updateHabit(id, input);
     get().refresh();
+    cloudBackup.scheduleUpload();
   },
 
   removeHabit: (id) => {
     habitRepository.deleteHabit(id);
     get().refresh();
+    cloudBackup.scheduleUpload();
   },
 
   reorder: (orderedIds) => {
@@ -88,6 +94,7 @@ export const useHabitStore = create<HabitState>((set, get) => ({
       .filter((h): h is Habit => Boolean(h));
     set({ habits });
     syncWidget();
+    cloudBackup.scheduleUpload();
   },
 
   toggleDay: (id, date) => {
@@ -97,5 +104,6 @@ export const useHabitStore = create<HabitState>((set, get) => ({
     const { habits, recentDays } = get();
     set({ doneByHabit: computeDoneByHabit(habits, recentDays) });
     syncWidget();
+    cloudBackup.scheduleUpload();
   },
 }));

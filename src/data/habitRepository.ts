@@ -133,6 +133,39 @@ export function createHabitRepository(
     toggleToday(habitId: string): boolean {
       return this.toggleCompletion(habitId, todayKey());
     },
+
+    /**
+     * Snapshot of everything persisted — the full habits list (INCLUDING
+     * archived, unlike listHabits) plus each habit's completion dates. Used by
+     * the cloud backup layer to serialize the whole store.
+     */
+    exportAll(): { habits: Habit[]; completions: Record<string, string[]> } {
+      const habits = readHabits();
+      const completions: Record<string, string[]> = {};
+      for (const h of habits) {
+        const dates = readCompletions(h.id);
+        if (dates.length > 0) completions[h.id] = dates;
+      }
+      return { habits, completions };
+    },
+
+    /**
+     * Wholesale replace of all habits and completions (e.g. restoring a cloud
+     * backup). Completion keys for habits absent from the incoming set are
+     * removed so no orphans linger.
+     */
+    importAll(
+      habits: Habit[],
+      completions: Record<string, string[]>,
+    ): void {
+      for (const h of readHabits()) {
+        if (!completions[h.id]) kv.remove(completionsKey(h.id));
+      }
+      writeHabits(habits);
+      for (const [habitId, dates] of Object.entries(completions)) {
+        writeCompletions(habitId, dates);
+      }
+    },
   };
 }
 

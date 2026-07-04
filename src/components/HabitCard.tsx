@@ -1,9 +1,9 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import type { Habit } from "../data/types";
 import { recentDayLabel } from "../lib/dates";
 import { useTheme } from "../theme/theme";
+import { Icon } from "./Icon";
 
 type Props = {
   habit: Habit;
@@ -81,7 +81,7 @@ export function HabitCard({
                 ]}
               >
                 {done && (
-                  <Ionicons name="checkmark" size={isToday ? 16 : 13} color="#FFFFFF" />
+                  <Icon name="check" size={isToday ? 16 : 13} color="#FFFFFF" strokeWidth={3} />
                 )}
               </View>
             </Pressable>
@@ -95,7 +95,7 @@ export function HabitCard({
         accessibilityLabel={`Options for ${habit.name}`}
         style={styles.menuButton}
       >
-        <Ionicons name="ellipsis-vertical" size={20} color={theme.subtext} />
+        <Icon name="more" size={20} color={theme.subtext} />
       </Pressable>
     </View>
   );

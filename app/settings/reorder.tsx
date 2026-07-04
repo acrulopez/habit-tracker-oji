@@ -4,11 +4,11 @@ import DraggableFlatList, {
   type RenderItemParams,
   ScaleDecorator,
 } from "react-native-draggable-flatlist";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useHabitStore } from "../../src/store/useHabitStore";
 import { useTheme } from "../../src/theme/theme";
 import type { Habit } from "../../src/data/types";
+import { Icon } from "../../src/components/Icon";
 
 export default function ReorderScreen() {
   const theme = useTheme();
@@ -36,7 +36,7 @@ export default function ReorderScreen() {
         </Text>
         {/* Press-and-drag the handle to move the row. */}
         <Pressable onPressIn={drag} hitSlop={12} accessibilityLabel={`Drag ${item.name}`}>
-          <Ionicons name="reorder-three" size={26} color={theme.subtext} />
+          <Icon name="reorder" size={26} color={theme.subtext} />
         </Pressable>
       </Pressable>
     </ScaleDecorator>
@@ -46,7 +46,7 @@ export default function ReorderScreen() {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color={theme.text} />
+          <Icon name="chevronLeft" size={28} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>Reorder habits</Text>
         <View style={{ width: 28 }} />

@@ -42,6 +42,34 @@ export function lastNDays(n: number, today: string = todayKey()): string[] {
   return out;
 }
 
+// Fixed epoch for compact completion encoding in cloud backups. Completion
+// dates are stored as integer day-offsets from this key (~4 bytes vs ~12 for a
+// "YYYY-MM-DD" string), giving several times more headroom under the 1 MB
+// iCloud key-value store cap. Must never change once data is in the wild.
+const BACKUP_EPOCH = "2020-01-01";
+
+/** Day-offset of a date key from the backup epoch (for compact encoding). */
+export function dateKeyToOffset(key: string): number {
+  return diffDays(key, BACKUP_EPOCH);
+}
+
+/** Inverse of dateKeyToOffset: rebuild a date key from a day-offset. */
+export function offsetToDateKey(offset: number): string {
+  return addDays(BACKUP_EPOCH, offset);
+}
+
+/** Coarse "x min/hr/day ago" label for a timestamp (used by Settings). */
+export function relativeTimeFromNow(iso: string, now: Date = new Date()): string {
+  const secs = Math.max(0, Math.round((now.getTime() - new Date(iso).getTime()) / 1000));
+  if (secs < 60) return "just now";
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 const WEEKDAY_INITIALS = ["S", "M", "T", "W", "T", "F", "S"];
 
 /** Single-letter weekday for a date key (local). */

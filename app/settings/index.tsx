@@ -1,22 +1,44 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { useHabitStore } from "../../src/store/useHabitStore";
+import { Icon, type IconName } from "../../src/components/Icon";
+import * as cloudBackup from "../../src/data/cloudBackup";
+import { relativeTimeFromNow } from "../../src/lib/dates";
 import { useTheme } from "../../src/theme/theme";
+
+function backupDetail(enabled: boolean): string {
+  if (!enabled) return "Off";
+  if (!cloudBackup.isCloudAvailable()) return "Sign in to iCloud to back up";
+  if (cloudBackup.hasQuotaWarning()) return "Backup full — using local copy";
+  const last = cloudBackup.getLastBackupTime();
+  return last ? relativeTimeFromNow(last) : "Not backed up yet";
+}
 
 export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const habitCount = useHabitStore((s) => s.habits.length);
+  const [backupEnabled, setBackupEnabled] = useState(() =>
+    cloudBackup.isBackupEnabled(),
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={28} color={theme.text} />
+          <Icon name="chevronLeft" size={28} color={theme.text} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
         <View style={{ width: 28 }} />
@@ -31,7 +53,7 @@ export default function SettingsScreen() {
       >
         <Section title="Habits">
           <Row
-            icon="swap-vertical"
+            icon="swapVertical"
             label="Reorder habits"
             detail={habitCount < 2 ? "Add a few habits first" : undefined}
             disabled={habitCount < 2}
@@ -39,16 +61,35 @@ export default function SettingsScreen() {
           />
         </Section>
 
+        {Platform.OS === "ios" && (
+          <Section title="Backup">
+            <ToggleRow
+              icon="cloud"
+              label="iCloud Backup"
+              value={backupEnabled}
+              onValueChange={(v) => {
+                cloudBackup.setBackupEnabled(v);
+                setBackupEnabled(v);
+              }}
+            />
+            <Row
+              icon="clock"
+              label="Last backed up"
+              detail={backupDetail(backupEnabled)}
+            />
+          </Section>
+        )}
+
         <Section title="Appearance">
           <Row
-            icon="contrast-outline"
+            icon="contrast"
             label="Theme"
             detail="Automatic (follows system)"
           />
         </Section>
 
         <Section title="About">
-          <Row icon="information-circle-outline" label="Habit Tracker Oji" detail={`v${Constants.expoConfig?.version ?? "1.0.0"}`} />
+          <Row icon="info" label="Habit Tracker Oji" detail={`v${Constants.expoConfig?.version ?? "1.0.0"}`} />
         </Section>
       </ScrollView>
     </View>
@@ -85,7 +126,7 @@ function Row({
   onPress,
   disabled,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: IconName;
   label: string;
   detail?: string;
   onPress?: () => void;
@@ -100,15 +141,36 @@ function Row({
         { opacity: disabled ? 0.5 : pressed && onPress ? 0.6 : 1 },
       ]}
     >
-      <Ionicons name={icon} size={22} color={theme.text} />
+      <Icon name={icon} size={22} color={theme.text} />
       <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
       {detail && (
         <Text style={[styles.rowDetail, { color: theme.subtext }]}>{detail}</Text>
       )}
       {onPress && !disabled && (
-        <Ionicons name="chevron-forward" size={20} color={theme.subtext} />
+        <Icon name="chevronRight" size={20} color={theme.subtext} />
       )}
     </Pressable>
+  );
+}
+
+function ToggleRow({
+  icon,
+  label,
+  value,
+  onValueChange,
+}: {
+  icon: IconName;
+  label: string;
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+}) {
+  const theme = useTheme();
+  return (
+    <View style={styles.row}>
+      <Icon name={icon} size={22} color={theme.text} />
+      <Text style={[styles.rowLabel, { color: theme.text }]}>{label}</Text>
+      <Switch value={value} onValueChange={onValueChange} />
+    </View>
   );
 }
 

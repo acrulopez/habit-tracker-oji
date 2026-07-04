@@ -7,9 +7,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/theme";
 import { EmojiPickerField } from "./EmojiPickerField";
+import { Icon } from "./Icon";
 
 type Props = {
   title: string;
@@ -44,7 +44,7 @@ export function HabitForm({
     >
       <View style={styles.header}>
         <Pressable onPress={onCancel} hitSlop={12}>
-          <Ionicons name="close" size={28} color={theme.subtext} />
+          <Icon name="close" size={28} color={theme.subtext} />
         </Pressable>
         <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
         <View style={{ width: 28 }} />
