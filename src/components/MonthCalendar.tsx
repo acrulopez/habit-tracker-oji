@@ -29,7 +29,7 @@ export function MonthCalendar({
       markedDates={marked}
       enableSwipeMonths
       maxDate={maxDate}
-      disableAllTouchEventsForDisabledDays
+      disableMonthChange
       onDayPress={(day) => onToggleDate?.(day.dateString)}
       theme={{
         calendarBackground: theme.card,
