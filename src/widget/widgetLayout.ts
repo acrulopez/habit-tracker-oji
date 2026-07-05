@@ -66,6 +66,8 @@ function roundedGrid(availableWidth: number, todayOnly: boolean): Grid {
   return {
     cell: Math.round(g.cell),
     spacing: Math.round(g.spacing),
+    box: Math.round(g.box),
+    boxDone: Math.round(g.boxDone),
     cornerRadius: Math.round(g.cornerRadius),
     emojiFontSize: Math.round(g.emojiFontSize),
   };

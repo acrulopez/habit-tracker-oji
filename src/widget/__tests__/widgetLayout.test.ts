@@ -44,41 +44,48 @@ describe("deriveLayout grid geometry", () => {
   const grid = ({
     cell,
     spacing,
+    box,
+    boxDone,
     cornerRadius,
     emojiFontSize,
   }: {
     cell: number;
     spacing: number;
+    box: number;
+    boxDone: number;
     cornerRadius: number;
     emojiFontSize: number;
-  }) => ({ cell, spacing, cornerRadius, emojiFontSize });
+  }) => ({ cell, spacing, box, boxDone, cornerRadius, emojiFontSize });
 
   test("keeps the compact target cell and grows spacing to fill wide widgets", () => {
     // width 500 -> colWidth 250, 4 cells per group: cell pins to MAX_CELL,
-    // spacing = (250 - 4*20) / 5 = 34.
+    // spacing = (250 - 4*20) / 5 = 34. Boxes draw inside the slot: undone
+    // 0.75*20 = 15, done 0.875*20 = 17.5 -> 18, radius 0.28*15 = 4.2 -> 4.
+    // The icon emoji is a bit bigger than a slot: 1.2*20 = 24.
     expect(deriveLayout({ width: 500, height: 160 })).toMatchObject(
-      grid({ cell: 20, spacing: 34, cornerRadius: 6, emojiFontSize: 20 }),
+      grid({ cell: 20, spacing: 34, box: 15, boxDone: 18, cornerRadius: 4, emojiFontSize: 24 }),
     );
   });
 
   test("clamps the cell to the minimum on a very narrow widget", () => {
     // width 60 -> today-only (4 cells across): can't fit MAX_CELL -> MIN_CELL,
-    // spacing floors at MIN_GAP.
+    // spacing floors at MIN_GAP. Boxes: 0.75*12 = 9, 0.875*12 = 10.5 -> 11.
+    // Emoji: 1.2*12 = 14.4 -> 14.
     expect(deriveLayout({ width: 60, height: 160 })).toMatchObject(
-      grid({ cell: 12, spacing: 8, cornerRadius: 3, emojiFontSize: 12 }),
+      grid({ cell: 12, spacing: 8, box: 9, boxDone: 11, cornerRadius: 3, emojiFontSize: 14 }),
     );
   });
 
   test("keeps spacing even and floored at the minimum gap", () => {
     // width 320 -> colWidth 160, 4 cells per group: spacing = (160 - 4*20) / 5 = 16.
     expect(deriveLayout({ width: 320, height: 160 })).toMatchObject(
-      grid({ cell: 20, spacing: 16, cornerRadius: 6, emojiFontSize: 20 }),
+      grid({ cell: 20, spacing: 16, box: 15, boxDone: 18, cornerRadius: 4, emojiFontSize: 24 }),
     );
   });
 
   test("the size-unknown default uses the compact grid at the minimum gap", () => {
     expect(DEFAULT_WIDGET_LAYOUT).toMatchObject(
-      grid({ cell: 20, spacing: 8, cornerRadius: 6, emojiFontSize: 20 }),
+      grid({ cell: 20, spacing: 8, box: 15, boxDone: 18, cornerRadius: 4, emojiFontSize: 24 }),
     );
   });
 });

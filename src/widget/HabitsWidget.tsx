@@ -16,7 +16,10 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
-/** A single tappable day cell — a bare rounded square, filled when done. */
+/**
+ * A single tappable day cell — a rounded square centered in its full cell slot
+ * (the slot stays the layout/tap unit), filled and slightly bigger when done.
+ */
 function DaySquare({
   habit,
   offset,
@@ -24,6 +27,8 @@ function DaySquare({
   done,
   today,
   cell,
+  box,
+  boxDone,
   cornerRadius,
 }: {
   habit: WidgetHabit;
@@ -32,8 +37,11 @@ function DaySquare({
   done: boolean;
   today: string;
   cell: number;
+  box: number;
+  boxDone: number;
   cornerRadius: number;
 }) {
+  const size = done ? boxDone : box;
   return (
     <FlexWidget
       clickAction="TOGGLE_HABIT"
@@ -42,29 +50,30 @@ function DaySquare({
       // the wrong date after midnight.
       clickActionData={{ habitId: habit.id, offset }}
       accessibilityLabel={`Toggle ${habit.name} on ${recentDayLabel(date, today)}`}
-      style={{
-        width: cell,
-        height: cell,
-        borderRadius: cornerRadius,
-        backgroundColor: done ? CELL_DONE : CELL_MUTED,
-      }}
-    />
+      style={{ width: cell, height: cell, alignItems: "center", justifyContent: "center" }}
+    >
+      <FlexWidget
+        style={{
+          width: size,
+          height: size,
+          borderRadius: cornerRadius,
+          backgroundColor: done ? CELL_DONE : CELL_MUTED,
+        }}
+      />
+    </FlexWidget>
   );
 }
 
-/** The emoji icon, centered in the same square as a day box. */
-function IconCell({
-  emoji,
-  cell,
-  emojiFontSize,
-}: {
-  emoji: string;
-  cell: number;
-  emojiFontSize: number;
-}) {
+/** The emoji icon — its cell is sized to the emoji, a bit larger than a box slot. */
+function IconCell({ emoji, emojiFontSize }: { emoji: string; emojiFontSize: number }) {
   return (
     <FlexWidget
-      style={{ width: cell, height: cell, alignItems: "center", justifyContent: "center" }}
+      style={{
+        width: emojiFontSize,
+        height: emojiFontSize,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
     >
       <TextWidget text={emoji} style={{ fontSize: emojiFontSize }} />
     </FlexWidget>
@@ -82,18 +91,15 @@ function habitCells(
   today: string,
   todayOnly: boolean,
   cell: number,
+  box: number,
+  boxDone: number,
   cornerRadius: number,
   emojiFontSize: number,
 ): React.ReactElement[] {
   const days = todayOnly ? habit.days.slice(-1) : habit.days;
   const baseOffset = habit.days.length - days.length;
   return [
-    <IconCell
-      key={`${habit.id}-icon`}
-      emoji={habit.emoji}
-      cell={cell}
-      emojiFontSize={emojiFontSize}
-    />,
+    <IconCell key={`${habit.id}-icon`} emoji={habit.emoji} emojiFontSize={emojiFontSize} />,
     ...days.map((day, i) => (
       <DaySquare
         key={`${habit.id}-${day.date}`}
@@ -103,6 +109,8 @@ function habitCells(
         done={day.done}
         today={today}
         cell={cell}
+        box={box}
+        boxDone={boxDone}
         cornerRadius={cornerRadius}
       />
     )),
@@ -115,6 +123,8 @@ export function HabitsWidget({
   todayOnly = DEFAULT_WIDGET_LAYOUT.todayOnly,
   maxRows = DEFAULT_WIDGET_LAYOUT.maxRows,
   cell = DEFAULT_WIDGET_LAYOUT.cell,
+  box = DEFAULT_WIDGET_LAYOUT.box,
+  boxDone = DEFAULT_WIDGET_LAYOUT.boxDone,
   verticalSpacing = DEFAULT_WIDGET_LAYOUT.verticalSpacing,
   cornerRadius = DEFAULT_WIDGET_LAYOUT.cornerRadius,
   emojiFontSize = DEFAULT_WIDGET_LAYOUT.emojiFontSize,
@@ -123,6 +133,8 @@ export function HabitsWidget({
   todayOnly?: boolean;
   maxRows?: number;
   cell?: number;
+  box?: number;
+  boxDone?: number;
   verticalSpacing?: number;
   cornerRadius?: number;
   emojiFontSize?: number;
@@ -176,7 +188,7 @@ export function HabitsWidget({
                   justifyContent: "space-evenly",
                 }}
               >
-                {habitCells(habit, today, todayOnly, cell, cornerRadius, emojiFontSize)}
+                {habitCells(habit, today, todayOnly, cell, box, boxDone, cornerRadius, emojiFontSize)}
               </FlexWidget>
             ))}
             {/* Pad a partial last row so its habit stays under column 1. */}

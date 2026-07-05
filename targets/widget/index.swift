@@ -200,19 +200,25 @@ private let CELL_DONE = Color(red: 0.976, green: 0.451, blue: 0.086) // #F97316
 private let CELL_MUTED = Color(red: 0.227, green: 0.227, blue: 0.235) // #3A3A3C
 
 // MARK: - Grid constants (keep in sync with src/widget/gridConstants.ts)
-// Each habit is a row of equal square cells: [icon] [day box] … The cells are a
-// compact fixed size; the spacing then grows to fill the width evenly, so every
-// gap and both end margins are equal ("spread evenly to fill").
+// Each habit is a row of equal square cell slots: [icon] [day box] … The slots
+// are a compact fixed size; the spacing then grows to fill the width evenly, so
+// every gap and both end margins are equal ("spread evenly to fill"). The icon
+// emoji fills its slot; a day box draws as a smaller square centered inside its
+// slot, growing a bit when done — so toggling never shifts the row.
 private let MAX_CELL: CGFloat = 20
 private let MIN_CELL: CGFloat = 12
 private let MIN_GAP: CGFloat = 8
+private let BOX_SCALE: CGFloat = 0.75
+private let BOX_DONE_SCALE: CGFloat = 0.875
 private let CORNER_RATIO: CGFloat = 0.28
-private let EMOJI_SCALE: CGFloat = 1.0
+private let EMOJI_SCALE: CGFloat = 1.2
 
 // Resolved geometry for one widget render.
 struct WidgetGrid {
-    let cell: CGFloat
+    let cell: CGFloat       // slot size — the layout/tap unit
     let spacing: CGFloat    // equal between every cell and at both edges
+    let box: CGFloat        // undone day-box square, centered in the slot
+    let boxDone: CGFloat    // done day-box square — slightly bigger
     let cornerRadius: CGFloat
     let emojiFont: CGFloat
 }
@@ -236,43 +242,48 @@ private func computeGrid(availableWidth: CGFloat, colsEff: Int) -> WidgetGrid {
         : MAX_CELL
     let cell = min(MAX_CELL, max(MIN_CELL, cellFit))
     let spacing = spreadSpacing(available: availableWidth, count: colsEff, cell: cell)
+    let box = BOX_SCALE * cell
     return WidgetGrid(
         cell: cell,
         spacing: spacing,
-        cornerRadius: CORNER_RATIO * cell,
+        box: box,
+        boxDone: BOX_DONE_SCALE * cell,
+        cornerRadius: CORNER_RATIO * box,
         emojiFont: EMOJI_SCALE * cell
     )
 }
 
-// A single tappable day cell — a bare rounded square, filled when done.
+// A single tappable day cell — a rounded square centered in its full cell slot
+// (the slot stays the layout/tap unit), filled and slightly bigger when done.
 struct DayCell: View {
     let day: WidgetDay
-    let cell: CGFloat
-    let cornerRadius: CGFloat
+    let grid: WidgetGrid
 
     var body: some View {
-        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        let size = day.done ? grid.boxDone : grid.box
+        RoundedRectangle(cornerRadius: grid.cornerRadius, style: .continuous)
             .fill(day.done ? CELL_DONE : CELL_MUTED)
-            .frame(width: cell, height: cell)
-            .contentShape(Rectangle()) // whole square is the tap target
+            .frame(width: size, height: size)
+            .frame(width: grid.cell, height: grid.cell) // full slot
+            .contentShape(Rectangle()) // whole slot is the tap target
     }
 }
 
 // The flat cells for one habit — an icon cell followed by its day cells — emitted
 // as siblings so the enclosing row `HStack(spacing:)` spaces every cell (icons and
-// boxes alike) uniformly. Icon only — no habit name, no labels. The emoji fills
-// the same square as a box and scales down for wide glyphs (💦, 🍉).
+// boxes alike) uniformly. Icon only — no habit name, no labels. The emoji sits in
+// its own slightly-larger square and scales down for wide glyphs (💦, 🍉).
 @ViewBuilder
 private func habitCells(habit: WidgetHabit, todayOnly: Bool, grid: WidgetGrid) -> some View {
     Text(habit.emoji)
         .font(.system(size: grid.emojiFont))
         .minimumScaleFactor(0.6)
         .lineLimit(1)
-        .frame(width: grid.cell, height: grid.cell)
+        .frame(width: grid.emojiFont, height: grid.emojiFont)
     let days = todayOnly ? Array(habit.days.suffix(1)) : habit.days
     ForEach(days, id: \.date) { day in
         Button(intent: ToggleHabitIntent(habitId: habit.id, date: day.date)) {
-            DayCell(day: day, cell: grid.cell, cornerRadius: grid.cornerRadius)
+            DayCell(day: day, grid: grid)
         }
         .buttonStyle(.plain)
     }
