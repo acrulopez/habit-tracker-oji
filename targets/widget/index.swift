@@ -326,13 +326,15 @@ struct HabitsWidgetEntryView: View {
             } else {
                 // Top-aligned rows. The grid is computed per column so each habit is
                 // its own even-filled mini-grid; the two columns split the width.
-                // Vertical spacing uses the row *capacity*, so a full widget fills
-                // its height with equal gaps and margins (fewer rows leave the
-                // bottom empty).
+                // Vertical spacing uses the row *capacity* and the real row height
+                // (the emoji frame, the tallest cell), so a full widget fills its
+                // height with equal gaps and margins (fewer rows leave the bottom
+                // empty).
                 GeometryReader { geo in
                     let colWidth = geo.size.width / CGFloat(columns)
                     let grid = computeGrid(availableWidth: colWidth, colsEff: perGroupCols)
-                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: grid.cell)
+                    let rowHeight = max(grid.cell, grid.emojiFont)
+                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: rowHeight)
                     VStack(spacing: vSpacing) {
                         ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                             HStack(spacing: 0) {
@@ -343,8 +345,11 @@ struct HabitsWidgetEntryView: View {
                                     .frame(maxWidth: .infinity)
                                 }
                                 // Keep a partial last row's habit under column 1.
+                                // Zero height: Color is greedy in both axes, and a
+                                // vertically-flexible placeholder would stretch the
+                                // row to absorb the VStack's leftover height.
                                 ForEach(0..<(columns - row.count), id: \.self) { _ in
-                                    Color.clear.frame(maxWidth: .infinity)
+                                    Color.clear.frame(maxWidth: .infinity, maxHeight: 0)
                                 }
                             }
                         }
@@ -375,9 +380,11 @@ struct HabitsHistoryEntryView: View {
             } else {
                 GeometryReader { geo in
                     // Single column: colWidth == full width. Vertical spacing uses
-                    // the row capacity so a full widget fills its height evenly.
+                    // the row capacity and the real row height (the emoji frame)
+                    // so a full widget fills its height evenly.
                     let grid = computeGrid(availableWidth: geo.size.width, colsEff: perGroupCols)
-                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: grid.cell)
+                    let rowHeight = max(grid.cell, grid.emojiFont)
+                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: rowHeight)
                     VStack(spacing: vSpacing) {
                         ForEach(entry.habits.prefix(maxRows)) { habit in
                             HStack(spacing: grid.spacing) {

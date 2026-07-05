@@ -92,17 +92,18 @@ describe("deriveLayout grid geometry", () => {
 
 describe("deriveLayout vertical spacing", () => {
   test("sizes the gap so a full widget fills its height evenly", () => {
-    // height 160 -> maxRows 3, cell 20: spacing = (160 - 3*20) / 4 = 25.
-    expect(deriveLayout({ width: 320, height: 160 })).toMatchObject({ verticalSpacing: 25 });
-    // Independent of width (same rows/cell): still 25.
-    expect(deriveLayout({ width: 500, height: 160 })).toMatchObject({ verticalSpacing: 25 });
-    // Smaller cells leave more leftover: (160 - 3*12) / 4 = 31.
-    expect(deriveLayout({ width: 60, height: 160 })).toMatchObject({ verticalSpacing: 31 });
+    // Rows are as tall as their tallest cell — the emoji frame.
+    // height 160 -> maxRows 3, row height 24: spacing = (160 - 3*24) / 4 = 22.
+    expect(deriveLayout({ width: 320, height: 160 })).toMatchObject({ verticalSpacing: 22 });
+    // Independent of width (same rows/row height): still 22.
+    expect(deriveLayout({ width: 500, height: 160 })).toMatchObject({ verticalSpacing: 22 });
+    // Smaller cells (row height 14) leave more leftover: (160 - 3*14) / 4 = 29.5 -> 30.
+    expect(deriveLayout({ width: 60, height: 160 })).toMatchObject({ verticalSpacing: 30 });
   });
 
   test("grows with height once the row cap is reached", () => {
-    // height 1000 -> maxRows caps at 8: spacing = (1000 - 8*20) / 9 = 93.33 -> 93.
-    expect(deriveLayout({ width: 320, height: 1000 })).toMatchObject({ verticalSpacing: 93 });
+    // height 1000 -> maxRows caps at 8: spacing = (1000 - 8*24) / 9 = 89.78 -> 90.
+    expect(deriveLayout({ width: 320, height: 1000 })).toMatchObject({ verticalSpacing: 90 });
   });
 
   test("floors at the minimum gap on very short widgets", () => {
