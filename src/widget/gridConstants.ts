@@ -12,18 +12,26 @@
  * evenly, so every gap between cells — and both end margins — are equal
  * ("spread evenly to fill"). iOS applies the computed `spacing` explicitly;
  * Android gets the same look for free from `justifyContent: "space-evenly"`.
+ *
+ * A cell is a *slot*: the icon emoji fills it, but a day box draws as a smaller
+ * square centered inside it (`box`), growing a bit when done (`boxDone`). The
+ * slot stays the layout/tap unit, so toggling a box never shifts the row.
  */
 
-/** Compact target size for a cell (icon/box); grown gaps do the filling. */
+/** Compact target size for a cell slot (icon/box); grown gaps do the filling. */
 export const MAX_CELL = 20;
 /** Never shrink a cell below this (keeps tiny widgets legible & tappable). */
 export const MIN_CELL = 12;
 /** Minimum spacing between cells / at the widget edges. */
 export const MIN_GAP = 8;
-/** Cell corner radius, as a fraction of the cell size. */
+/** Undone day-box square, as a fraction of the cell slot. */
+export const BOX_SCALE = 0.75;
+/** Done day-box square — a bit bigger than undone, still inside the slot. */
+export const BOX_DONE_SCALE = 0.875;
+/** Box corner radius, as a fraction of the (undone) box size. */
 export const CORNER_RATIO = 0.28;
-/** Emoji font size, as a fraction of the cell size (1.0 = fills the cell). */
-export const EMOJI_SCALE = 1.0;
+/** Emoji font size, as a fraction of the cell slot (>1 = larger than a slot). */
+export const EMOJI_SCALE = 1.2;
 /** Reference grid resolution the spacing model is designed around. */
 export const GRID_UNITS = 16;
 
@@ -34,13 +42,17 @@ export const GRID_UNITS = 16;
 export const THREE_DAY_MIN_WIDTH_DP = 250;
 
 export type Grid = {
-  /** Square cell size (dp/pt). */
+  /** Square cell slot size (dp/pt) — the layout/tap unit for icons and boxes. */
   cell: number;
   /** Uniform spacing between cells and at the edges (each gap == each margin). */
   spacing: number;
-  /** Cell corner radius. */
+  /** Undone day-box square, drawn centered inside the slot. */
+  box: number;
+  /** Done day-box square — slightly bigger than `box`. */
+  boxDone: number;
+  /** Day-box corner radius. */
   cornerRadius: number;
-  /** Emoji font size, sized to fit inside a cell. */
+  /** Emoji font (and icon frame) size — a bit larger than a cell slot. */
   emojiFontSize: number;
 };
 
@@ -76,10 +88,13 @@ export function computeGrid(availableWidth: number, colsEff: number): Grid {
       : MAX_CELL;
   const cell = clamp(cellFit, MIN_CELL, MAX_CELL);
   const spacing = spreadSpacing(availableWidth, colsEff, cell);
+  const box = BOX_SCALE * cell;
   return {
     cell,
     spacing,
-    cornerRadius: CORNER_RATIO * cell,
+    box,
+    boxDone: BOX_DONE_SCALE * cell,
+    cornerRadius: CORNER_RATIO * box,
     emojiFontSize: EMOJI_SCALE * cell,
   };
 }
