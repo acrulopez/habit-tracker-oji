@@ -1,4 +1,11 @@
 import { getKv } from "../data/mmkv";
+import {
+  computeGrid,
+  MIN_GAP,
+  spreadSpacing,
+  THREE_DAY_MIN_WIDTH_DP,
+  type Grid,
+} from "./gridConstants";
 
 /**
  * Size-driven layout for the Android home-screen widget.
@@ -16,7 +23,7 @@ export type WidgetSize = {
   height: number;
 };
 
-export type WidgetLayout = {
+export type WidgetLayout = Grid & {
   /**
    * Show only today's square per habit (narrow widget), instead of the full
    * 3-day strip. Lets a 2-column narrow widget pack ~8 habits.
@@ -24,6 +31,12 @@ export type WidgetLayout = {
   todayOnly: boolean;
   /** Max habit rows that fit. */
   maxRows: number;
+  /**
+   * Vertical gap between rows and at the top/bottom edges. Sized so a *full*
+   * widget (`maxRows` rows) fills its height evenly; with fewer rows the
+   * leftover just stays at the bottom.
+   */
+  verticalSpacing: number;
 };
 
 /** Habits are always laid out in two columns. */
@@ -38,13 +51,33 @@ const ROW_HEIGHT_DP = 44;
 const PADDING_DP = 28;
 const MAX_ROWS_CAP = 8;
 
-// Two columns of the full 3-day strip only fit above this width; narrower than
-// this we drop to a single "today" square per habit. Mirrors iOS Small vs
-// Medium/Large.
-const THREE_DAY_MIN_WIDTH_DP = 250;
+// Cells in one habit group: an icon plus either 3 day boxes (wide) or 1 (narrow
+// today-only). The grid is computed per column so each habit is its own
+// even-filled mini-grid.
+function perGroupCols(todayOnly: boolean): number {
+  return 1 + (todayOnly ? 1 : 3);
+}
+
+// Grid geometry rounded to whole dp (RemoteViews want integers). Computed on the
+// per-column width (widget split into COLUMNS equal halves).
+function roundedGrid(availableWidth: number, todayOnly: boolean): Grid {
+  const colWidth = availableWidth > 0 ? availableWidth / COLUMNS : 0;
+  const g = computeGrid(colWidth, perGroupCols(todayOnly));
+  return {
+    cell: Math.round(g.cell),
+    spacing: Math.round(g.spacing),
+    cornerRadius: Math.round(g.cornerRadius),
+    emojiFontSize: Math.round(g.emojiFontSize),
+  };
+}
 
 /** Layout used when the widget size isn't known yet (wide, 3-day strip). */
-export const DEFAULT_WIDGET_LAYOUT: WidgetLayout = { todayOnly: false, maxRows: 2 };
+export const DEFAULT_WIDGET_LAYOUT: WidgetLayout = {
+  todayOnly: false,
+  maxRows: 2,
+  verticalSpacing: MIN_GAP, // height unknown -> compact rows
+  ...roundedGrid(0, false), // size unknown -> clamps to the compact MAX_CELL grid
+};
 
 /** Read the last-known widget size, or null if none has been recorded. */
 export function getWidgetSize(): WidgetSize | null {
@@ -77,5 +110,9 @@ export function deriveLayout(size: WidgetSize | null): WidgetLayout {
   const rows = Math.floor((size.height - PADDING_DP) / ROW_HEIGHT_DP);
   const maxRows = Math.min(MAX_ROWS_CAP, Math.max(1, rows));
   const todayOnly = size.width < THREE_DAY_MIN_WIDTH_DP;
-  return { todayOnly, maxRows };
+  const grid = roundedGrid(size.width, todayOnly);
+  // Vertical spacing uses the row *capacity*, so a full widget fills its height
+  // with equal gaps and margins (fewer rows leave the bottom empty).
+  const verticalSpacing = Math.round(spreadSpacing(size.height, maxRows, grid.cell));
+  return { todayOnly, maxRows, verticalSpacing, ...grid };
 }

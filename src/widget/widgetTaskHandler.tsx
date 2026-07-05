@@ -38,11 +38,5 @@ export async function widgetTaskHandler(props: WidgetTaskHandlerProps) {
       ? { width: widgetInfo.width, height: widgetInfo.height }
       : null,
   );
-  renderWidget(
-    <HabitsWidget
-      snapshot={buildTodaySnapshot()}
-      todayOnly={layout.todayOnly}
-      maxRows={layout.maxRows}
-    />,
-  );
+  renderWidget(<HabitsWidget snapshot={buildTodaySnapshot()} {...layout} />);
 }
