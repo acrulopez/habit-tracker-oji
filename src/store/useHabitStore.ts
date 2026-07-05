@@ -1,3 +1,4 @@
+import { InteractionManager } from "react-native";
 import { create } from "zustand";
 import { habitRepository, type HabitInput } from "../data/habitRepository";
 import type { Habit } from "../data/types";
@@ -86,15 +87,23 @@ export const useHabitStore = create<HabitState>((set, get) => ({
   },
 
   reorder: (orderedIds) => {
-    reconcileWidgetToggles();
+    // Do only the cheap, visible work synchronously so the drop animation
+    // settles instantly; defer the widget/cloud sync until the drag
+    // interaction finishes so its native bridge calls don't block the JS
+    // thread mid-animation.
     habitRepository.reorderHabits(orderedIds);
     const byId = new Map(get().habits.map((h) => [h.id, h]));
     const habits = orderedIds
       .map((id) => byId.get(id))
       .filter((h): h is Habit => Boolean(h));
     set({ habits });
-    syncWidget();
-    cloudBackup.scheduleUpload();
+    InteractionManager.runAfterInteractions(() => {
+      // Reorder doesn't touch completions, but draining here keeps the
+      // republished snapshot consistent with any pending widget taps.
+      reconcileWidgetToggles();
+      syncWidget();
+      cloudBackup.scheduleUpload();
+    });
   },
 
   toggleDay: (id, date) => {

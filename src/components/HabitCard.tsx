@@ -11,13 +11,13 @@ type Props = {
   days: string[];
   doneByDate: Record<string, boolean>;
   today: string;
-  onToggleDay: (date: string) => void;
-  onMenu: () => void;
+  onToggleDay: (habitId: string, date: string) => void;
+  onMenu: (habit: Habit) => void;
   onLongPress?: () => void;
   isActive?: boolean;
 };
 
-export function HabitCard({
+function HabitCardComponent({
   habit,
   days,
   doneByDate,
@@ -42,7 +42,7 @@ export function HabitCard({
     >
       <Pressable
         onLongPress={onLongPress}
-        delayLongPress={200}
+        delayLongPress={120}
         style={styles.identity}
         accessibilityLabel={`${habit.name}. Hold to reorder.`}
       >
@@ -61,7 +61,7 @@ export function HabitCard({
           return (
             <Pressable
               key={date}
-              onPress={() => onToggleDay(date)}
+              onPress={() => onToggleDay(habit.id, date)}
               hitSlop={6}
               accessibilityLabel={`${recentDayLabel(date, today)} ${
                 done ? "done" : "not done"
@@ -90,7 +90,7 @@ export function HabitCard({
       </View>
 
       <Pressable
-        onPress={onMenu}
+        onPress={() => onMenu(habit)}
         hitSlop={10}
         accessibilityLabel={`Options for ${habit.name}`}
         style={styles.menuButton}
@@ -138,3 +138,9 @@ const styles = StyleSheet.create({
   dotToday: { width: 30, height: 30, borderRadius: 15 },
   menuButton: { paddingLeft: 2, paddingVertical: 4 },
 });
+
+/**
+ * Memoized so committing a reordered `habits` array only re-renders the cards
+ * whose props actually changed, keeping the drop settle smooth.
+ */
+export const HabitCard = React.memo(HabitCardComponent);

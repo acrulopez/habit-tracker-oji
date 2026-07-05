@@ -11,7 +11,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { useHabitStore } from "../../src/store/useHabitStore";
 import { Icon, type IconName } from "../../src/components/Icon";
 import * as cloudBackup from "../../src/data/cloudBackup";
 import { relativeTimeFromNow } from "../../src/lib/dates";
@@ -29,7 +28,6 @@ export default function SettingsScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const habitCount = useHabitStore((s) => s.habits.length);
   const [backupEnabled, setBackupEnabled] = useState(() =>
     cloudBackup.isBackupEnabled(),
   );
@@ -51,16 +49,6 @@ export default function SettingsScreen() {
           paddingBottom: insets.bottom + 24,
         }}
       >
-        <Section title="Habits">
-          <Row
-            icon="swapVertical"
-            label="Reorder habits"
-            detail={habitCount < 2 ? "Add a few habits first" : undefined}
-            disabled={habitCount < 2}
-            onPress={() => router.push("/settings/reorder")}
-          />
-        </Section>
-
         {Platform.OS === "ios" && (
           <Section title="Backup">
             <ToggleRow
