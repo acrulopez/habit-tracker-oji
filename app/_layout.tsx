@@ -49,7 +49,6 @@ export default function RootLayout() {
           />
           <Stack.Screen name="habit/[id]/history" />
           <Stack.Screen name="settings/index" />
-          <Stack.Screen name="settings/reorder" />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

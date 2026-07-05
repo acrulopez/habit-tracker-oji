@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DraggableFlatList, {
@@ -12,6 +12,19 @@ import { HabitMenu } from "../src/components/HabitMenu";
 import { Icon } from "../src/components/Icon";
 import { useTheme } from "../src/theme/theme";
 import type { Habit } from "../src/data/types";
+
+/**
+ * Snappier-than-default release spring so a dropped card settles into its new
+ * spot quickly instead of drifting. Module-level so its identity stays stable.
+ */
+const DROP_ANIMATION_CONFIG = {
+  damping: 30,
+  mass: 0.2,
+  stiffness: 250,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.5,
+  restSpeedThreshold: 0.5,
+};
 
 export default function HomeScreen() {
   const theme = useTheme();
@@ -27,6 +40,9 @@ export default function HomeScreen() {
   const removeHabit = useHabitStore((s) => s.removeHabit);
 
   const [menuHabit, setMenuHabit] = useState<Habit | null>(null);
+
+  // Stable identity so memoized HabitCards don't re-render on every commit.
+  const openMenu = useCallback((habit: Habit) => setMenuHabit(habit), []);
 
   const confirmDelete = (habit: Habit) => {
     setMenuHabit(null);
@@ -48,10 +64,10 @@ export default function HomeScreen() {
           days={recentDays}
           doneByDate={doneByHabit[item.id] ?? {}}
           today={today}
-          onToggleDay={(date) => toggleDay(item.id, date)}
+          onToggleDay={toggleDay}
           onLongPress={drag}
           isActive={isActive}
-          onMenu={() => setMenuHabit(item)}
+          onMenu={openMenu}
         />
       </View>
     </ScaleDecorator>
@@ -97,6 +113,7 @@ export default function HomeScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         onDragEnd={({ data }) => reorder(data.map((h) => h.id))}
+        animationConfig={DROP_ANIMATION_CONFIG}
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingBottom: insets.bottom + 24,
