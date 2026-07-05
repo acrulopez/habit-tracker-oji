@@ -113,8 +113,10 @@ export function deriveLayout(size: WidgetSize | null): WidgetLayout {
   const maxRows = Math.min(MAX_ROWS_CAP, Math.max(1, rows));
   const todayOnly = size.width < THREE_DAY_MIN_WIDTH_DP;
   const grid = roundedGrid(size.width, todayOnly);
-  // Vertical spacing uses the row *capacity*, so a full widget fills its height
-  // with equal gaps and margins (fewer rows leave the bottom empty).
-  const verticalSpacing = Math.round(spreadSpacing(size.height, maxRows, grid.cell));
+  // Vertical spacing uses the row *capacity* and the real row height (the emoji
+  // frame, the tallest cell in a row), so a full widget fills its height with
+  // equal gaps and margins (fewer rows leave the bottom empty).
+  const rowHeight = Math.max(grid.cell, grid.emojiFontSize);
+  const verticalSpacing = Math.round(spreadSpacing(size.height, maxRows, rowHeight));
   return { todayOnly, maxRows, verticalSpacing, ...grid };
 }
