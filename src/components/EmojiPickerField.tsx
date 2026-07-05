@@ -1,12 +1,23 @@
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import EmojiPicker, {
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import {
+  EmojiKeyboard,
   type EmojiType,
   useRecentPicksPersistence,
 } from "rn-emoji-keyboard";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getKv } from "../data/mmkv";
 import { emojiPickerTheme } from "../theme/emojiPickerTheme";
 import { useTheme } from "../theme/theme";
+import { Icon } from "./Icon";
 
 type Props = {
   value: string;
@@ -17,6 +28,7 @@ const RECENT_EMOJIS_KEY = "recentEmojis";
 
 export function EmojiPickerField({ value, onChange }: Props) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
 
   useRecentPicksPersistence({
@@ -47,25 +59,57 @@ export function EmojiPickerField({ value, onChange }: Props) {
       </Pressable>
       <Text style={[styles.hint, { color: theme.subtext }]}>Tap to change</Text>
 
-      <EmojiPicker
-        open={open}
-        onClose={() => setOpen(false)}
-        onEmojiSelected={(e: EmojiType) => {
-          onChange(e.emoji);
-          setOpen(false);
-        }}
-        enableSearchBar
-        enableRecentlyUsed
-        categoryPosition="top"
-        defaultHeight="85%"
-        theme={emojiPickerTheme(theme)}
-      />
+      <Modal
+        visible={open}
+        animationType="slide"
+        onRequestClose={() => setOpen(false)}
+      >
+        <View
+          style={[
+            styles.modal,
+            { backgroundColor: theme.background, paddingTop: insets.top + 8 },
+          ]}
+        >
+          <View style={styles.modalHeader}>
+            <Pressable
+              accessibilityLabel="Close emoji picker"
+              onPress={() => setOpen(false)}
+              hitSlop={12}
+            >
+              <Icon name="close" size={28} color={theme.subtext} />
+            </Pressable>
+          </View>
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+          >
+            <EmojiKeyboard
+              onEmojiSelected={(e: EmojiType) => {
+                onChange(e.emoji);
+                setOpen(false);
+              }}
+              enableSearchBar
+              enableRecentlyUsed
+              categoryPosition="top"
+              theme={emojiPickerTheme(theme)}
+            />
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrapper: { alignItems: "center", gap: 6 },
+  flex: { flex: 1 },
+  modal: { flex: 1, paddingHorizontal: 8 },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 12,
+    paddingBottom: 8,
+  },
   box: {
     width: 84,
     height: 84,
