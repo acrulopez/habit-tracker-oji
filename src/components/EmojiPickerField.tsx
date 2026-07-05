@@ -1,6 +1,11 @@
 import React, { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import EmojiPicker, { type EmojiType } from "rn-emoji-keyboard";
+import EmojiPicker, {
+  type EmojiType,
+  useRecentPicksPersistence,
+} from "rn-emoji-keyboard";
+import { getKv } from "../data/mmkv";
+import { emojiPickerTheme } from "../theme/emojiPickerTheme";
 import { useTheme } from "../theme/theme";
 
 type Props = {
@@ -8,9 +13,25 @@ type Props = {
   onChange: (emoji: string) => void;
 };
 
+const RECENT_EMOJIS_KEY = "recentEmojis";
+
 export function EmojiPickerField({ value, onChange }: Props) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+
+  useRecentPicksPersistence({
+    initialization: () => {
+      const raw = getKv().getString(RECENT_EMOJIS_KEY);
+      try {
+        return Promise.resolve(raw ? JSON.parse(raw) : []);
+      } catch {
+        return Promise.resolve([]);
+      }
+    },
+    onStateChange: (next) => {
+      getKv().set(RECENT_EMOJIS_KEY, JSON.stringify(next));
+    },
+  });
 
   return (
     <View style={styles.wrapper}>
@@ -34,6 +55,10 @@ export function EmojiPickerField({ value, onChange }: Props) {
           setOpen(false);
         }}
         enableSearchBar
+        enableRecentlyUsed
+        categoryPosition="top"
+        defaultHeight="85%"
+        theme={emojiPickerTheme(theme)}
       />
     </View>
   );
