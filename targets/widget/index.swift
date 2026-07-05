@@ -199,49 +199,82 @@ private let CARD_BG = Color(red: 0.09, green: 0.09, blue: 0.10)   // #17171A
 private let CELL_DONE = Color(red: 0.976, green: 0.451, blue: 0.086) // #F97316
 private let CELL_MUTED = Color(red: 0.227, green: 0.227, blue: 0.235) // #3A3A3C
 
+// MARK: - Grid constants (keep in sync with src/widget/gridConstants.ts)
+// Each habit is a row of equal square cells: [icon] [day box] … The cells are a
+// compact fixed size; the spacing then grows to fill the width evenly, so every
+// gap and both end margins are equal ("spread evenly to fill").
+private let MAX_CELL: CGFloat = 20
+private let MIN_CELL: CGFloat = 12
+private let MIN_GAP: CGFloat = 8
+private let CORNER_RATIO: CGFloat = 0.28
+private let EMOJI_SCALE: CGFloat = 1.0
+
+// Resolved geometry for one widget render.
+struct WidgetGrid {
+    let cell: CGFloat
+    let spacing: CGFloat    // equal between every cell and at both edges
+    let cornerRadius: CGFloat
+    let emojiFont: CGFloat
+}
+
+// Even "space-evenly" spacing for `count` cells of `cell` along an axis of
+// `available` length: the leftover is split across the `count + 1` gaps (both
+// end margins + inner gaps), floored at MIN_GAP. Used for the horizontal grid
+// and, with the row capacity, for the vertical row spacing.
+private func spreadSpacing(available: CGFloat, count: Int, cell: CGFloat) -> CGFloat {
+    let n = CGFloat(count)
+    return available > 0 ? max(MIN_GAP, (available - n * cell) / (n + 1)) : MIN_GAP
+}
+
+// Derive the grid from the available width and the number of cells across one
+// habit-row (`colsEff` = icon columns + box columns, e.g. 4 for icon+3 boxes).
+// Cells take the compact target size; `spacing` fills the leftover evenly.
+private func computeGrid(availableWidth: CGFloat, colsEff: Int) -> WidgetGrid {
+    let cols = CGFloat(colsEff)
+    let cellFit = availableWidth > 0
+        ? min(MAX_CELL, (availableWidth - (cols + 1) * MIN_GAP) / cols)
+        : MAX_CELL
+    let cell = min(MAX_CELL, max(MIN_CELL, cellFit))
+    let spacing = spreadSpacing(available: availableWidth, count: colsEff, cell: cell)
+    return WidgetGrid(
+        cell: cell,
+        spacing: spacing,
+        cornerRadius: CORNER_RATIO * cell,
+        emojiFont: EMOJI_SCALE * cell
+    )
+}
+
 // A single tappable day cell — a bare rounded square, filled when done.
 struct DayCell: View {
     let day: WidgetDay
+    let cell: CGFloat
+    let cornerRadius: CGFloat
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 6, style: .continuous)
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
             .fill(day.done ? CELL_DONE : CELL_MUTED)
-            .frame(width: 22, height: 22)
+            .frame(width: cell, height: cell)
+            .contentShape(Rectangle()) // whole square is the tap target
     }
 }
 
-// One habit as a grid cell: emoji on the left, then either the full 3-day strip
-// or just today's square (small widget). Icon only — no habit name, no labels.
-struct HabitCellView: View {
-    let habit: WidgetHabit
-    let today: String
-    let todayOnly: Bool
-
-    // Narrow (small) widget shows only today so two columns of habits fit.
-    private var displayDays: [WidgetDay] {
-        todayOnly ? Array(habit.days.suffix(1)) : habit.days
-    }
-    // The small widget's 2-column cells are narrow, so use a smaller emoji and
-    // tighter gap there to keep wide emojis (💦, 🍉) from clipping at the edge.
-    private var emojiSize: CGFloat { todayOnly ? 17 : 20 }
-    private var emojiSpacing: CGFloat { todayOnly ? 6 : 10 }
-
-    // Natural-sized group (emoji + squares); the parent row positions it within
-    // its column.
-    var body: some View {
-        HStack(spacing: emojiSpacing) {
-            Text(habit.emoji)
-                .font(.system(size: emojiSize))
-                .fixedSize() // never compress/clip the emoji
-            HStack(spacing: 6) {
-                ForEach(displayDays, id: \.date) { day in
-                    Button(intent: ToggleHabitIntent(habitId: habit.id, date: day.date)) {
-                        DayCell(day: day)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+// The flat cells for one habit — an icon cell followed by its day cells — emitted
+// as siblings so the enclosing row `HStack(spacing:)` spaces every cell (icons and
+// boxes alike) uniformly. Icon only — no habit name, no labels. The emoji fills
+// the same square as a box and scales down for wide glyphs (💦, 🍉).
+@ViewBuilder
+private func habitCells(habit: WidgetHabit, todayOnly: Bool, grid: WidgetGrid) -> some View {
+    Text(habit.emoji)
+        .font(.system(size: grid.emojiFont))
+        .minimumScaleFactor(0.6)
+        .lineLimit(1)
+        .frame(width: grid.cell, height: grid.cell)
+    let days = todayOnly ? Array(habit.days.suffix(1)) : habit.days
+    ForEach(days, id: \.date) { day in
+        Button(intent: ToggleHabitIntent(habitId: habit.id, date: day.date)) {
+            DayCell(day: day, cell: grid.cell, cornerRadius: grid.cornerRadius)
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -260,6 +293,10 @@ struct HabitsWidgetEntryView: View {
         default: return 4 // small + medium are the same height
         }
     }
+    // Cells in one habit group: an icon plus either 3 day boxes (wide) or 1
+    // (narrow today-only). The grid is computed per column so each habit is its
+    // own even-filled mini-grid.
+    private var perGroupCols: Int { 1 + (todayOnly ? 1 : 3) }
     // Habits chunked into rows of `columns`, capped to what fits the family.
     private var rows: [[WidgetHabit]] {
         let shown = Array(entry.habits.prefix(columns * maxRows))
@@ -276,32 +313,34 @@ struct HabitsWidgetEntryView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Top-aligned rows.
-                VStack(spacing: 14) {
-                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                        HStack(spacing: 0) {
-                            if todayOnly {
-                                // Small: left column hugs the leading edge, right
-                                // column centered in its half.
-                                ForEach(Array(row.enumerated()), id: \.offset) { i, habit in
-                                    HabitCellView(habit: habit, today: entry.today, todayOnly: true)
-                                        .frame(maxWidth: .infinity, alignment: i == 0 ? .leading : .center)
+                // Top-aligned rows. The grid is computed per column so each habit is
+                // its own even-filled mini-grid; the two columns split the width.
+                // Vertical spacing uses the row *capacity*, so a full widget fills
+                // its height with equal gaps and margins (fewer rows leave the
+                // bottom empty).
+                GeometryReader { geo in
+                    let colWidth = geo.size.width / CGFloat(columns)
+                    let grid = computeGrid(availableWidth: colWidth, colsEff: perGroupCols)
+                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: grid.cell)
+                    VStack(spacing: vSpacing) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                            HStack(spacing: 0) {
+                                ForEach(row) { habit in
+                                    HStack(spacing: grid.spacing) {
+                                        habitCells(habit: habit, todayOnly: todayOnly, grid: grid)
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 }
+                                // Keep a partial last row's habit under column 1.
                                 ForEach(0..<(columns - row.count), id: \.self) { _ in
                                     Color.clear.frame(maxWidth: .infinity)
-                                }
-                            } else {
-                                // Medium/large: equal space left / middle / right.
-                                Spacer(minLength: 0)
-                                ForEach(Array(row.enumerated()), id: \.offset) { _, habit in
-                                    HabitCellView(habit: habit, today: entry.today, todayOnly: false)
-                                    Spacer(minLength: 0)
                                 }
                             }
                         }
                     }
+                    .padding(.vertical, vSpacing)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
             }
         }
         .containerBackground(CARD_BG, for: .widget)
@@ -313,6 +352,7 @@ struct HabitsWidgetEntryView: View {
 struct HabitsHistoryEntryView: View {
     var entry: HabitsProvider.Entry
     private let maxRows = 4 // single column
+    private let perGroupCols = 4 // single column: icon + 3 boxes
 
     var body: some View {
         Group {
@@ -322,13 +362,22 @@ struct HabitsHistoryEntryView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                VStack(spacing: 14) {
-                    ForEach(entry.habits.prefix(maxRows)) { habit in
-                        HabitCellView(habit: habit, today: entry.today, todayOnly: false)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                GeometryReader { geo in
+                    // Single column: colWidth == full width. Vertical spacing uses
+                    // the row capacity so a full widget fills its height evenly.
+                    let grid = computeGrid(availableWidth: geo.size.width, colsEff: perGroupCols)
+                    let vSpacing = spreadSpacing(available: geo.size.height, count: maxRows, cell: grid.cell)
+                    VStack(spacing: vSpacing) {
+                        ForEach(entry.habits.prefix(maxRows)) { habit in
+                            HStack(spacing: grid.spacing) {
+                                habitCells(habit: habit, todayOnly: false, grid: grid)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
                     }
+                    .padding(.vertical, vSpacing)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
         .containerBackground(CARD_BG, for: .widget)
@@ -349,6 +398,9 @@ struct HabitsWidget: Widget {
         // Small (2 home-columns wide) shows a single habit column like the
         // reference; medium/large (4 wide) show two columns.
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        // We manage our own border padding via the grid, so drop the default
+        // widget content margins.
+        .contentMarginsDisabled()
     }
 }
 
@@ -363,6 +415,9 @@ struct HabitsHistoryWidget: Widget {
         .description("Four habits with the last 3 days.")
         // 2×2 only: four habits in a single column, each with the 3-day strip.
         .supportedFamilies([.systemSmall])
+        // We manage our own border padding via the grid, so drop the default
+        // widget content margins.
+        .contentMarginsDisabled()
     }
 }
 

@@ -23,12 +23,16 @@ function DaySquare({
   date,
   done,
   today,
+  cell,
+  cornerRadius,
 }: {
   habit: WidgetHabit;
   offset: number;
   date: string;
   done: boolean;
   today: string;
+  cell: number;
+  cornerRadius: number;
 }) {
   return (
     <FlexWidget
@@ -39,62 +43,70 @@ function DaySquare({
       clickActionData={{ habitId: habit.id, offset }}
       accessibilityLabel={`Toggle ${habit.name} on ${recentDayLabel(date, today)}`}
       style={{
-        width: 22,
-        height: 22,
-        borderRadius: 6,
+        width: cell,
+        height: cell,
+        borderRadius: cornerRadius,
         backgroundColor: done ? CELL_DONE : CELL_MUTED,
       }}
     />
   );
 }
 
-/**
- * One habit: emoji on the left, then either the full 3-day strip or just today's
- * square (narrow widget). Offsets are preserved so a tap toggles the right date.
- */
-function HabitCell({
-  habit,
-  today,
-  todayOnly,
-  align,
+/** The emoji icon, centered in the same square as a day box. */
+function IconCell({
+  emoji,
+  cell,
+  emojiFontSize,
 }: {
-  habit: WidgetHabit;
-  today: string;
-  todayOnly: boolean;
-  /** How the emoji+squares group sits in its column cell. */
-  align: "flex-start" | "center";
+  emoji: string;
+  cell: number;
+  emojiFontSize: number;
 }) {
-  const days = todayOnly ? habit.days.slice(-1) : habit.days;
-  const baseOffset = habit.days.length - days.length;
   return (
     <FlexWidget
-      style={{
-        // Small: each cell fills half the row (align controls where content
-        // sits). Wide: natural width so the row's space-evenly can distribute
-        // the two groups with equal left/middle/right gaps.
-        ...(todayOnly ? { flex: 1 } : {}),
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: todayOnly ? align : "flex-start",
-        // Tighter gap on the narrow (today-only) widget so wide emojis don't clip.
-        flexGap: todayOnly ? 6 : 10,
-      }}
+      style={{ width: cell, height: cell, alignItems: "center", justifyContent: "center" }}
     >
-      <TextWidget text={habit.emoji} style={{ fontSize: todayOnly ? 17 : 20 }} />
-      <FlexWidget style={{ flexDirection: "row", alignItems: "center", flexGap: 6 }}>
-        {days.map((day, i) => (
-          <DaySquare
-            key={day.date}
-            habit={habit}
-            offset={baseOffset + i}
-            date={day.date}
-            done={day.done}
-            today={today}
-          />
-        ))}
-      </FlexWidget>
+      <TextWidget text={emoji} style={{ fontSize: emojiFontSize }} />
     </FlexWidget>
   );
+}
+
+/**
+ * Flat list of cells for one habit — `[icon, …day boxes]` — as siblings, so a
+ * row's `space-evenly` distributes every cell (icons and boxes alike) with equal
+ * spacing between them and equal margins at the edges. Offsets are preserved so a
+ * tap toggles the right date.
+ */
+function habitCells(
+  habit: WidgetHabit,
+  today: string,
+  todayOnly: boolean,
+  cell: number,
+  cornerRadius: number,
+  emojiFontSize: number,
+): React.ReactElement[] {
+  const days = todayOnly ? habit.days.slice(-1) : habit.days;
+  const baseOffset = habit.days.length - days.length;
+  return [
+    <IconCell
+      key={`${habit.id}-icon`}
+      emoji={habit.emoji}
+      cell={cell}
+      emojiFontSize={emojiFontSize}
+    />,
+    ...days.map((day, i) => (
+      <DaySquare
+        key={`${habit.id}-${day.date}`}
+        habit={habit}
+        offset={baseOffset + i}
+        date={day.date}
+        done={day.done}
+        today={today}
+        cell={cell}
+        cornerRadius={cornerRadius}
+      />
+    )),
+  ];
 }
 
 /** Android home-screen widget UI (rendered to RemoteViews). */
@@ -102,10 +114,18 @@ export function HabitsWidget({
   snapshot,
   todayOnly = DEFAULT_WIDGET_LAYOUT.todayOnly,
   maxRows = DEFAULT_WIDGET_LAYOUT.maxRows,
+  cell = DEFAULT_WIDGET_LAYOUT.cell,
+  verticalSpacing = DEFAULT_WIDGET_LAYOUT.verticalSpacing,
+  cornerRadius = DEFAULT_WIDGET_LAYOUT.cornerRadius,
+  emojiFontSize = DEFAULT_WIDGET_LAYOUT.emojiFontSize,
 }: {
   snapshot: TodaySnapshot;
   todayOnly?: boolean;
   maxRows?: number;
+  cell?: number;
+  verticalSpacing?: number;
+  cornerRadius?: number;
+  emojiFontSize?: number;
 }) {
   const today = snapshot?.date ?? "";
   const habits = (snapshot?.habits ?? []).slice(0, COLUMNS * Math.max(1, maxRows));
@@ -117,11 +137,13 @@ export function HabitsWidget({
         height: "match_parent",
         width: "match_parent",
         flexDirection: "column",
-        // Top-aligned rows with a fixed gap; a tall widget with few habits just
-        // leaves space below (fills as habits are added).
+        // Top-aligned rows with a uniform vertical gap sized so a full widget
+        // fills its height evenly; the row's space-evenly owns the horizontal
+        // end margins so they equal the gaps between cells.
         justifyContent: "flex-start",
-        flexGap: 14,
-        padding: 14,
+        flexGap: verticalSpacing,
+        paddingVertical: verticalSpacing,
+        paddingHorizontal: 0,
         borderRadius: 20,
         backgroundColor: CARD_BG,
       }}
@@ -139,29 +161,28 @@ export function HabitsWidget({
               width: "match_parent",
               flexDirection: "row",
               alignItems: "center",
-              // Small keeps flex cells (align controls placement); wide uses
-              // space-evenly to give equal left/middle/right gaps.
-              justifyContent: todayOnly ? "space-between" : "space-evenly",
-              flexGap: todayOnly ? 12 : 0,
             }}
           >
-            {rowHabits.map((habit, colIndex) => (
-              <HabitCell
+            {/* Each habit is its own even-filled group (space-evenly) in an equal
+                (flex:1) column, so its boxes stay grouped and the two columns
+                split the width. */}
+            {rowHabits.map((habit) => (
+              <FlexWidget
                 key={habit.id}
-                habit={habit}
-                today={today}
-                todayOnly={todayOnly}
-                // Small: left column hugs the leading edge, right column centers
-                // in its half. (Ignored in the wide space-evenly layout.)
-                align={colIndex === 0 ? "flex-start" : "center"}
-              />
+                style={{
+                  flex: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "space-evenly",
+                }}
+              >
+                {habitCells(habit, today, todayOnly, cell, cornerRadius, emojiFontSize)}
+              </FlexWidget>
             ))}
-            {/* Small: pad the final row with empty flex cells so partial rows
-                stay aligned. Wide uses space-evenly, so no padding needed. */}
-            {todayOnly &&
-              Array.from({ length: COLUMNS - rowHabits.length }).map((_, i) => (
-                <FlexWidget key={`pad-${i}`} style={{ flex: 1 }} />
-              ))}
+            {/* Pad a partial last row so its habit stays under column 1. */}
+            {Array.from({ length: COLUMNS - rowHabits.length }).map((_, i) => (
+              <FlexWidget key={`pad-${i}`} style={{ flex: 1 }} />
+            ))}
           </FlexWidget>
         ))
       )}
