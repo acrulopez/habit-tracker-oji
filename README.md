@@ -61,23 +61,37 @@ How long the install lasts depends on the signing account: **~1 year** on a paid
 Apple Developer account, **7 days** on a free Apple ID (after which re-run the
 command).
 
-## Build & publish (TestFlight / stores)
+## Releasing (manual, iOS)
 
-Cloud builds via EAS — no local Xcode required:
+Publishing is done manually from the laptop so long EAS builds don't burn GitHub
+Actions free-tier minutes. Builds still run on EAS's cloud (no local Xcode
+required) — they're just triggered from your terminal. The git tag is the source
+of truth for the marketing version, so **tag first, then build**.
 
 ```bash
-make build-dev      # development build (dev client, internal distribution)
-make build-preview  # preview build (internal distribution)
-make build-prod     # production build
-make submit         # upload the latest production build to App Store Connect / TestFlight
+make check                     # optional: typecheck + lint + test
+make release VERSION=1.2.0      # tags v1.2.0 and pushes it (git only — no build triggered)
+make publish-ios VERSION=1.2.0  # set version, EAS-build on the cloud, then auto-submit
 ```
 
-The first `make build-*` run links/creates the EAS project and generates signing
-credentials interactively — answer the prompts. `make submit` uses the Apple ID and
-App Store Connect app id configured in `eas.json` (`submit.production.ios`).
+`make publish-ios` runs `set-version` (writes the version into `app.config.ts`),
+then `eas build --platform ios --profile production --auto-submit`, then restores
+`app.config.ts` so the working tree stays clean — the version bump is never
+committed (the tag is the source of truth). The build runs on EAS's servers
+(triggered from your Mac, so **no GitHub Actions minutes**) and, on success, uploads
+to App Store Connect using `submit.production.ios` in `eas.json`. App Store Connect
+auto-publishes once the build clears review. EAS auto-increments the build number.
 
-`make release VERSION=x.y.z` tags the version and pushes it to trigger the CI
-release pipeline.
+The first EAS build links/creates the EAS project and generates signing credentials
+interactively — answer the prompts. If it warns about the uncommitted version bump,
+choose to proceed.
+
+Two-step alternative: `make build-ios` then `make submit-ios`. The other build
+profiles are also available: `make build-dev` / `make build-preview` / `make build-prod`.
+
+CI (`.github/workflows/release.yml`) still exists but now runs **only via manual
+dispatch** (GitHub → Actions → Release → Run workflow, enter the tag). It no longer
+runs on tag push, and needs the **`EXPO_TOKEN`** repo secret.
 
 ## Architecture
 

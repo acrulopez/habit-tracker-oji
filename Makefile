@@ -9,10 +9,16 @@ APP_NAME := $(notdir $(CURDIR))
 EXPO ?= npx expo
 EAS  ?= npx eas-cli
 
-.PHONY: help install start web ios ios-device ios-release ios-start android android-start \
+# Simulators targeted by `make ios` / `make ipad` (override on the CLI if needed).
+# These match the App Store screenshot sizes: 6.9" (1320x2868) and 13" (2064x2752).
+IOS_SIM  ?= iPhone 17 Pro Max
+IPAD_SIM ?= iPad Pro 13-inch (M4)
+
+.PHONY: help install start web ios ipad ios-device ios-release ios-start android android-start \
         prebuild prebuild-clean \
         test test-watch typecheck lint check \
         build-dev build-preview build-prod submit release \
+        build-ios submit-ios publish-ios \
         clean
 
 ## help: Show this help.
@@ -35,9 +41,13 @@ start:
 web:
 	$(EXPO) start --web
 
-## ios: Build (if needed) & run the iOS dev client, then start Metro.
+## ios: Build (if needed) & run the iOS dev client on IOS_SIM, then start Metro.
 ios:
-	$(EXPO) run:ios
+	$(EXPO) run:ios --device "$(IOS_SIM)"
+
+## ipad: Build (if needed) & run the iOS dev client on IPAD_SIM, then start Metro.
+ipad:
+	$(EXPO) run:ios --device "$(IPAD_SIM)"
 
 ## ios-device: Build & install the dev client on a USB-connected iPhone.
 ios-device:
@@ -108,11 +118,28 @@ build-prod:
 submit:
 	$(EAS) submit --profile production
 
-## release: Tag VERSION and push it to trigger the CI release pipeline. Usage: make release VERSION=1.2.0
+## release: Tag VERSION and push it (git only, no build). Usage: make release VERSION=1.2.0
 release:
 	@test -n "$(VERSION)" || { echo "Usage: make release VERSION=1.2.0"; exit 1; }
 	git tag v$(VERSION)
 	git push origin v$(VERSION)
+
+# --- Manual iOS release (build/submit from the laptop, not CI) --------------
+
+## build-ios: EAS production build for iOS (cloud build, triggered locally).
+build-ios:
+	$(EAS) build --platform ios --profile production
+
+## submit-ios: Submit the latest iOS production build to App Store Connect.
+submit-ios:
+	$(EAS) submit --platform ios --profile production --latest
+
+## publish-ios: Sync version from VERSION, then EAS-build & auto-submit iOS. Usage: make publish-ios VERSION=1.2.0
+publish-ios:
+	@test -n "$(VERSION)" || { echo "Usage: make publish-ios VERSION=1.2.0"; exit 1; }
+	npm run set-version v$(VERSION)
+	$(EAS) build --platform ios --profile production --auto-submit
+	git checkout -- app.json app.config.ts 2>/dev/null || true   # discard the local version bump; the tag is the source of truth
 
 # --- Housekeeping -----------------------------------------------------------
 
